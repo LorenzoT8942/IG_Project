@@ -5,26 +5,47 @@ import {OBJLoader} from "three/examples/jsm/loaders/OBJLoader";
 import {FBXLoader} from "three/examples/jsm/loaders/FBXLoader.js";
 import {GUI} from "three/examples/jsm/libs/lil-gui.module.min.js";
 import {Sky} from "three/examples/jsm/objects/Sky.js";
+import {SkeletonHelper} from "three";
+import {Player} from "./Player.js";
+import {Golem} from "./Golem.js";
 
 
 const scene = new THREE.Scene();
 const textureLoader = new THREE.TextureLoader();
 const gui = new GUI();
 const loader = new GLTFLoader();
-const objLoader = new OBJLoader();
 const fbxLoader  = new FBXLoader();
 const renderer = new THREE.WebGLRenderer();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 4;
 const controls = new PointerLockControls(camera, renderer.domElement);
 const clock = new THREE.Clock();
+const raycaster = new THREE.Raycaster();
+/*
+let idleAction;
+let runningAction;
+let modelReady = false;
+const animationActions = [];
+let activeAction, lastAction;
+let mixer;
+*/
+let projectiles = [];
+let spellSpeed = 50;
+let firing = false;
+const pressed = new Set();
+const pointer = new THREE.Vector2();
+let groundMesh;
+let prevPosition = new THREE.Vector3(0,0 ,0);
+let headBone;
 
+const golem = new Golem(scene, loader);
+golem.load();
 
 //Renderer initialization
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.setAnimationLoop(animate);
 document.body.appendChild(renderer.domElement);
+
 
 let staff;
 loader.load('/public/models/staff/scene.gltf', (gltf) => {
@@ -71,57 +92,67 @@ loader.load('/public/models/fire/scene.gltf', (gltf) => {
 
 const animationsFolder = gui.addFolder('Animations');
 animationsFolder.open();
-
-let mixer;
-let modelReady = false;
-const animationActions = [];
-let activeAction;
-let lastAction;
-let character;
-
+/*
 const setAction = (toAction) => {
-    console.log("ce provo");
-    console.log(toAction);
-    console.log(activeAction);
-    if (toAction !== activeAction) {
-        lastAction = activeAction;
-        activeAction = toAction;
-        //lastAction.stop();
-       //lastAction.fadeOut(1);
-        //activeAction.reset();
-        //activeAction.fadeIn(1);
-        activeAction.play();
-        console.log("diobono");
-    }
+     lastAction = activeAction;
+     activeAction = toAction;
+
+     if (lastAction !== activeAction) {
+         lastAction.fadeOut(0.2);
+         activeAction.reset().fadeIn(0.2).play();
+     }
 }
 
 const animations = {
     idle: function (){
         setAction(animationActions[0]);
+    },
+
+    run: function() {
+        setAction(animationActions[1]);
     }
 }
 
 fbxLoader.load('/public/models/character/character.fbx', (fbx) => {
-    character = fbx;
-    character.scale.set(0.01, 0.01, 0.01);
-    character.position.set(0.01, -1.4, 0.01);
-    character.traverse(function (character) {
-        character.castShadow = true;
+    charModel = fbx;
+    charModel.scale.set(0.01, 0.01, 0.01);
+    charModel.position.set(0.01, -1.4, 0.01);
+
+    //TODO: vedere cosa fa traverse
+    charModel.traverse(function (charModel) {
+        if (charModel.isObject3D) charModel.castShadow = true;
     })
 
-    mixer = new THREE.AnimationMixer(character);
-    fbxLoader.load('/public/models/character/anim/idle.fbx', (fbx) => {
-        const idleAction = mixer.clipAction(fbx.animations[0]);
+    scene.add(charModel);
+    modelReady = true;
+    mixer = new THREE.AnimationMixer(charModel);
+    fbxLoader.load('/public/models/character/anim/idle.fbx', (idlefbx) => {
+        idleAction = mixer.clipAction(idlefbx.animations[0]);
         animationActions.push(idleAction);
-        animationsFolder.add(animations, 'idle');
-        activeAction = animationActions[0];
-        modelReady = true;
-        scene.add(character);
+        activeAction = idleAction;
+        idleAction.play();
+
     })
+    fbxLoader.load('/public/models/character/anim/running.fbx', (runningfbx) => {
+        runningAction = mixer.clipAction(runningfbx.animations[0]);
+        animationActions.push(runningAction);
+    })
+
+    const skelHelper = new SkeletonHelper(charModel);
+    scene.add(skelHelper);
+    console.log(skelHelper.bones);
+    skelHelper.bones.forEach(bone => {
+        console.log(bone.name);
+    })
+    const boneName = "mixamorigHead";
+    headBone = charModel.getObjectByName(boneName);
+    if (headBone) console.log("headBone ", headBone);
 })
+ */
 
-animations.idle();
-
+const character = new Player(scene, fbxLoader);
+character.load();
+console.log(character);
 
 //Sky
 const sky = new Sky()
@@ -192,18 +223,26 @@ const onKeyDown = function(event) {
         case 'ArrowUp':
         case 'KeyW':
             moveForward = true;
+            pressed.add(event.code);
+            character.animations.run();
             break;
         case 'ArrowLeft':
         case 'KeyA':
             moveLeft = true;
+            pressed.add(event.code);
+            character.animations.run();
             break;
         case 'ArrowDown':
         case 'KeyS':
             moveBackward = true;
+            pressed.add(event.code);
+            character.animations.run();
             break;
         case 'ArrowRight':
         case 'KeyD':
             moveRight = true;
+            pressed.add(event.code);
+            character.animations.run();
             break;
     }
 };
@@ -212,32 +251,77 @@ const onKeyUp = function(event) {
         case 'ArrowUp':
         case 'KeyW':
             moveForward = false;
+            pressed.delete(event.code);
+            if(!pressed.size){
+                character.animations.idle();
+            }
             break;
         case 'ArrowLeft':
         case 'KeyA':
             moveLeft = false;
+            pressed.delete(event.code);
+            if(!pressed.size){
+                character.animations.idle();
+            }
             break;
         case 'ArrowDown':
         case 'KeyS':
             moveBackward = false;
+            pressed.delete(event.code);
+            if(!pressed.size){
+                character.animations.idle();
+            }
             break;
         case 'ArrowRight':
         case 'KeyD':
             moveRight = false;
+            pressed.delete(event.code);
+            if(!pressed.size){
+                character.animations.idle();
+            }
             break;
     }
 };
-
-document.addEventListener('keydown', onKeyDown, false);
-document.addEventListener('keyup', onKeyUp, false);
-
-window.addEventListener('resize', onWindowResize, false);
-
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
+function onMouseDown(event){
+    firing = true;
+    pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+    pointer.y = -( event.clientY / window.innerHeight ) * 2 + 1;
+
+    console.log("pointer", pointer);
+    raycaster.setFromCamera(pointer, camera);
+    const intersects = raycaster.intersectObject(groundMesh);
+    let dir;
+
+    if (intersects.length > 0){
+        //dir = new THREE.Vector2(intersects[0].point.x, intersects[0].point.z);
+        dir = new THREE.Vector2(pointer.x, -pointer.y);
+        console.log(dir.x, dir.y);
+    }
+    let geometry = new THREE.SphereGeometry(0.1, 8, 4);
+    let material = new THREE.MeshBasicMaterial({color: "aqua"});
+    let projectile = {
+        mesh :  new THREE.Mesh(geometry, material),
+        dir : dir.normalize()
+    };
+
+    console.log(projectile.dir);
+
+    projectile.mesh.position.copy(character.model.position);
+    //projectile.quaternion.copy(camera.quaternion);
+    scene.add(projectile.mesh);
+    projectiles.push(projectile);
+}
+
+document.addEventListener('keydown', onKeyDown, false);
+document.addEventListener('keyup', onKeyUp, false);
+window.addEventListener('resize', onWindowResize, false);
+document.addEventListener('mousedown', onMouseDown, false);
+
 
 function createTerrain() {
     const width = 60;
@@ -277,13 +361,21 @@ function createTerrain() {
         normalMap: groundNormalTexture
     });
     const ground = new THREE.Mesh(geometry, material);
+    groundMesh = ground;
     ground.receiveShadow = true;
 
     scene.add(ground);
 
     gui.add(ground.material, 'displacementScale', 0, 1, 0.001);
     gui.add(ground.material, 'displacementBias', -2, 1, 0.001);
+
 }
+
+const cameraFolder = gui.addFolder('Camera Position');
+cameraFolder.add(camera.position, 'x', -10, 10).name('X Position');
+cameraFolder.add(camera.position, 'y', -10, 10).name('Y Position');
+cameraFolder.add(camera.position, 'z', -10, 10).name('Z Position');
+cameraFolder.open();
 
 function addSky(sky) {
     sky.scale.set(100, 100, 100);
@@ -296,13 +388,14 @@ function addSky(sky) {
     sky.material.uniforms['sunPosition'].value.set(1, 1, 1);
 }
 
-const stats = new Stats();
-document.body.appendChild(stats.dom);
-
 //Axes initialization
 const axesHelper = new THREE.AxesHelper( 2 );
 axesHelper.setColors(new THREE.Color( 1, 0, 0 ), new THREE.Color( 0, 1, 0 ), new THREE.Color( 0, 0, 1 ))
-scene.add( axesHelper );
+scene.add( axesHelper);
+
+const cameraDistance = 6;
+const direction = new THREE.Vector3( 0, 0, 0);
+const rotationMatrix = new THREE.Matrix4();
 
 function animate() {
     cube.rotation.x += 0.01;
@@ -314,16 +407,49 @@ function animate() {
     velocity.x -= velocity.x * dampingFactor * delta;
     velocity.z -= velocity.z * dampingFactor * delta;
 
-    if (moveForward) velocity.z -= 400.0 * delta;
-    if (moveBackward) velocity.z += 400.0 * delta;
-    if (moveLeft) velocity.x -= 400.0 * delta;
-    if (moveRight) velocity.x += 400.0 * delta;
+    //Velocity multiplied by the time passed between one frame and the next
+    if (moveForward) {
+        velocity.z -= 400.0 * delta;
+        direction.z -= 1;
+    }
+    if (moveBackward){
+        velocity.z += 400.0 * delta;
+        direction.z += 1;
+    }
+    if (moveLeft){
+        velocity.x -= 400.0 * delta;
+        direction.x -= 1;
+    }
+    if (moveRight){
+        velocity.x += 400.0 * delta;
+        direction.x += 1;
+    }
 
-    controls.moveRight(velocity.x * delta);
-    controls.moveForward(-velocity.z * delta);
     prevTime = time;
 
-    if (modelReady) mixer.update(clock.getDelta());
+    if (character.modelReady) {
+        prevPosition = character.model.position;
+        character.mixer.update(clock.getDelta());
+        camera.lookAt(character.model.position);
+        character.model.position.x = character.model.position.x + velocity.x *delta;
+        character.model.position.z = character.model.position.z + velocity.z *delta;
+        camera.position.set(character.model.position.x, character.model.position.y + cameraDistance , character.model.position.z + cameraDistance);
+        projectiles.forEach(p => {
+            p.mesh.translateZ(spellSpeed * delta* p.dir.y);
+            p.mesh.translateX(spellSpeed * delta* p.dir.x);
+        })
+
+        //TODO: capire come è fatto un quaternion
+        if (direction.length() > 0){
+            direction.normalize();
+            const targetQuaternion = new THREE.Quaternion();
+            rotationMatrix.lookAt(direction, new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0));
+            targetQuaternion.setFromRotationMatrix(rotationMatrix);
+            character.model.quaternion.rotateTowards(targetQuaternion, delta * 10);
+        }
+
+    }
+
     renderer.render(scene, camera);
 }
 
