@@ -21,7 +21,7 @@ export class Player {
         this.animations = {
             idle: () => {
                 this.setAction(this.animationActions[0]);
-                },
+            },
 
             run: () => {
                 this.setAction(this.animationActions[1]);
@@ -77,15 +77,13 @@ export class Player {
             })
 
             const skelHelper = new SkeletonHelper(this.model);
-            this.scene.add(skelHelper);
-            console.log(skelHelper.bones);
+            //this.scene.add(skelHelper);
+            //console.log(skelHelper.bones);
             skelHelper.bones.forEach(bone => {
-                console.log(bone.name);
+                //console.log(bone.name);
             })
             const boneName = "mixamorigHead";
             this.headBone = this.model.getObjectByName(boneName);
-            if (this.headBone) console.log("headBone ", this.headBone);
         })
     }
 }
-

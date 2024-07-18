@@ -1,0 +1,11 @@
+Model Information:
+* title:	Lava Elemental
+* source:	https://sketchfab.com/3d-models/lava-elemental-193bccb25d544a0a92dcbbaf21d7d75a
+* author:	ikreinin (https://sketchfab.com/kreinin)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Lava Elemental" (https://sketchfab.com/3d-models/lava-elemental-193bccb25d544a0a92dcbbaf21d7d75a) by ikreinin (https://sketchfab.com/kreinin) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
