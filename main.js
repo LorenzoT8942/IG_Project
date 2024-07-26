@@ -22,15 +22,23 @@ const raycaster = new THREE.Raycaster();
 let projectiles = [];
 let spellSpeed = 50;
 let firing = false;
+let enemies = [];
 const pressed = new Set();
 const pointer = new THREE.Vector2();
 let groundMesh;
 let prevPosition = new THREE.Vector3(0,0 ,0);
 let headBone;
+let projectileManager = new ProjectileManager(scene, enemies);
 
-const demon = new Demon(scene, loader);
-demon.load();
-//golem.spawn();
+for (let i = 0; i < 5; i++) {
+    const demon = new Demon(scene, loader);
+    demon.load();
+    enemies.push(demon);
+}
+
+
+
+
 
 //Renderer initialization
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -216,6 +224,7 @@ function onWindowResize() {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
+
 function onMouseDown(event){
 
     pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
@@ -231,6 +240,9 @@ function onMouseDown(event){
         dir = new THREE.Vector2(pointer.x, -pointer.y);
         //console.log(dir.x, dir.y);
     }
+
+    projectileManager.spawnProjectile(dir, character.model.position);
+    /*
     let geometry = new THREE.SphereGeometry(0.1, 8, 4);
     let material = new THREE.MeshBasicMaterial({color: "aqua"});
     let sphereMesh = new THREE.Mesh(geometry, material);
@@ -248,6 +260,8 @@ function onMouseDown(event){
     //projectile.quaternion.copy(camera.quaternion);
     scene.add(projectile.mesh);
     projectiles.push(projectile);
+
+     */
 }
 
 document.addEventListener('keydown', onKeyDown, false);
@@ -381,27 +395,27 @@ function animate() {
             targetQuaternion.setFromRotationMatrix(rotationMatrix);
             character.model.quaternion.rotateTowards(targetQuaternion, delta * 10);
         }
+        enemies.forEach(demon => {
+            if (demon.modelReady) {
+                demon.moveTowards(character.model, delta);
+                demon.mixer.update(delta);
+                demon.updateHitbox();
+            }
+        })
 
-        if (demon.modelReady){
-            demon.moveTowards(character.model, delta);
-            demon.mixer.update(delta);
-            demon.updateHitbox();
+
+            /*
             projectiles.forEach(p => {
                 p.mesh.translateZ(spellSpeed * delta* p.dir.y);
                 p.mesh.translateX(spellSpeed * delta* p.dir.x);
-                /*
-                p.mesh.geometry.computeBoundingSphere();
-                const bs = p.mesh.geometry.boundingSphere;
-                //bs.applyMatrix4(p.mesh.matrixWorld);
-                bs.set(p.mesh.position, 0.2);
-                //console.log("projectile", bs);
-                 */
                 p.bb.setFromObject(p.mesh);
                 if (demon.isHit(p)){
-                   // projectiles.splice()
+                    scene.remove(p.mesh);
                 }
             })
-        }
+             */
+        projectileManager.updatePositions(delta);
+
     }
 
     renderer.render(scene, camera);

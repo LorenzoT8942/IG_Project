@@ -39,7 +39,7 @@ export class Player {
             activeAction.fadeIn(0.3);
             activeAction.play();
             //lastAction.crossFadeTo(activeAction, 0.3, true).play();
-        }
+        }s
         */
         this.lastAction = this.activeAction;
         this.activeAction = toAction;
