@@ -7,21 +7,22 @@ import {Sky} from "three/examples/jsm/objects/Sky.js";
 import {Player} from "./Player.js";
 import {Demon} from "./Demon.js";
 import {ProjectileManager} from "./ProjectileManager.js";
+import {AssetLoader} from "./AssetLoader.js";
 
+const loader = new GLTFLoader();
+const fbxLoader  = new FBXLoader();
+const assetLoader = new AssetLoader(loader, fbxLoader);
+assetLoader.loadMutant();
 
 const scene = new THREE.Scene();
 const textureLoader = new THREE.TextureLoader();
 const gui = new GUI();
-const loader = new GLTFLoader();
-const fbxLoader  = new FBXLoader();
+
 const renderer = new THREE.WebGLRenderer();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const controls = new PointerLockControls(camera, renderer.domElement);
 const clock = new THREE.Clock();
 const raycaster = new THREE.Raycaster();
-let projectiles = [];
-let spellSpeed = 50;
-let firing = false;
 let enemies = [];
 const pressed = new Set();
 const pointer = new THREE.Vector2();
@@ -30,21 +31,13 @@ let prevPosition = new THREE.Vector3(0,0 ,0);
 let headBone;
 let projectileManager = new ProjectileManager(scene, enemies);
 
-for (let i = 0; i < 5; i++) {
-    const demon = new Demon(scene, loader);
-    demon.load();
-    enemies.push(demon);
-}
-
-
-
-
-
 //Renderer initialization
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.setAnimationLoop(animate);
 document.body.appendChild(renderer.domElement);
+
+let spawned = false;
 
 
 let staff;
@@ -59,7 +52,6 @@ loader.load('/public/models/staff/scene.gltf', (gltf) => {
         }
     })
     scene.add(staff);
-
 })
 
 loader.load('/public/models/pine/scene.gltf', (gltf) => {
@@ -242,26 +234,6 @@ function onMouseDown(event){
     }
 
     projectileManager.spawnProjectile(dir, character.model.position);
-    /*
-    let geometry = new THREE.SphereGeometry(0.1, 8, 4);
-    let material = new THREE.MeshBasicMaterial({color: "aqua"});
-    let sphereMesh = new THREE.Mesh(geometry, material);
-    let pBox = new THREE.Box3().setFromObject(sphereMesh);
-    let projectile = {
-        mesh : sphereMesh,
-        dir : dir.normalize(),
-        bb: pBox
-    };
-
-    //console.log(projectile.dir);
-    projectile.mesh.position.copy(character.model.position);
-    projectile.mesh.position.y += 1;
-    projectile.bb.setFromObject(projectile.mesh);
-    //projectile.quaternion.copy(camera.quaternion);
-    scene.add(projectile.mesh);
-    projectiles.push(projectile);
-
-     */
 }
 
 document.addEventListener('keydown', onKeyDown, false);
@@ -338,12 +310,17 @@ function addSky(sky) {
 //Axes initialization
 const axesHelper = new THREE.AxesHelper( 2 );
 axesHelper.setColors(new THREE.Color( 1, 0, 0 ), new THREE.Color( 0, 1, 0 ), new THREE.Color( 0, 0, 1 ))
-scene.add( axesHelper);
+scene.add(axesHelper);
 
 const cameraDistance = 6;
 const direction = new THREE.Vector3( 0, 0, 0);
 const rotationMatrix = new THREE.Matrix4();
 //console.log(scene.children);
+
+//const testenemy = new Demon(scene, fbxLoader, enemies);
+//testenemy.load();
+
+
 function animate() {
     cube.rotation.x += 0.01;
     cube.rotation.y += 0.01;
@@ -395,13 +372,27 @@ function animate() {
             targetQuaternion.setFromRotationMatrix(rotationMatrix);
             character.model.quaternion.rotateTowards(targetQuaternion, delta * 10);
         }
-        enemies.forEach(demon => {
-            if (demon.modelReady) {
-                demon.moveTowards(character.model, delta);
-                demon.mixer.update(delta);
-                demon.updateHitbox();
+
+        if (assetLoader.mutantLoaded){
+            if (!spawned){
+                for (let i = 0; i < 5; i++) {
+                   enemies.push(new Demon(scene, fbxLoader, assetLoader))
+                }
+                spawned = true;
             }
-        })
+
+            enemies.forEach(enemy => {
+                enemy.moveTowards(character.model, delta);
+                enemy.mixer.update(delta);
+            })
+
+
+        }
+
+        //testenemy.mixer.update(delta);
+        //testenemy.moveTowards(character.model, delta);
+
+
 
 
             /*

@@ -44,6 +44,7 @@ export class ProjectileManager {
     }
 
     checkHit(p){
+        /*
         this.enemies.forEach(e => {
             if (e.hitbox.intersectsBox(p.bb)) {
                 if (!e.isDead){
@@ -55,6 +56,8 @@ export class ProjectileManager {
 
             }
         })
+
+         */
     }
 
     removeProjectile(projectile) {
