@@ -5,6 +5,9 @@ export class Player {
 
     //Constructor
     constructor(scene, fbxLoader) {
+        this.maxHp = 1000;
+        this.hp = this.maxHp;
+        this.hpBar = document.getElementById("hp-bar");
         this.model = null;
         this.activeAction = null;
         this.lastAction = null;
@@ -16,7 +19,6 @@ export class Player {
         this.scene = scene;
         this.animationActions = [];
         this.fbxLoader = fbxLoader;
-
 
         this.animations = {
             idle: () => {
@@ -34,7 +36,7 @@ export class Player {
             lastAction = activeAction;
             activeAction = toAction;
             //lastAction.stop();
-            lastAction.fadeOut(0.3);
+            lastAction.fadeOut(0.3);a
             activeAction.reset();
             activeAction.fadeIn(0.3);
             activeAction.play();
@@ -85,5 +87,14 @@ export class Player {
             const boneName = "mixamorigHead";
             this.headBone = this.model.getObjectByName(boneName);
         })
+    }
+
+    applyDamage(damage){
+        this.hp -= damage;
+        const percentage = this.hp /this.maxHp * 100;
+        this.hpBar.style.width = `${percentage}%`;
+        if (this.hp <= 0){
+            this.isDead = true;
+        }
     }
 }

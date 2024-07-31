@@ -15,7 +15,6 @@ export class ProjectileManager {
     }
 
     spawnProjectile(direction, spawnPos) {
-        console.log("ao");
         let geometry = new THREE.SphereGeometry(0.1, 8, 4);
         let material = new THREE.MeshBasicMaterial({color: "aqua"});
         let sphereMesh = new THREE.Mesh(geometry, material);
@@ -23,7 +22,8 @@ export class ProjectileManager {
         let projectile = {
             mesh : sphereMesh,
             dir : direction.normalize(),
-            bb: pBox
+            bb: pBox,
+            ignore: false
         };
 
         projectile.mesh.position.copy(spawnPos);
@@ -35,18 +35,20 @@ export class ProjectileManager {
     }
 
     updatePositions(delta) {
+
         this.projectiles.forEach(p => {
-            p.mesh.translateZ(this.projectileSpeed * delta* p.dir.y);
-            p.mesh.translateX(this.projectileSpeed * delta* p.dir.x);
-            p.bb.setFromObject(p.mesh);
-            this.checkHit(p);
+            if (!p.ignore){
+                p.mesh.translateZ(this.projectileSpeed * delta* p.dir.y);
+                p.mesh.translateX(this.projectileSpeed * delta* p.dir.x);
+                p.bb.setFromObject(p.mesh);
+                this.checkHit(p);
+            }
         })
     }
 
     checkHit(p){
-        /*
         this.enemies.forEach(e => {
-            if (e.hitbox.intersectsBox(p.bb)) {
+            if (e.hitbox.intersectsBox(p.bb) && p.ignore === false) {
                 if (!e.isDead){
                     e.applyDamage(this.projectileDamage);
                     if (e.isDead){
@@ -56,13 +58,11 @@ export class ProjectileManager {
 
             }
         })
-
-         */
     }
 
     removeProjectile(projectile) {
         this.scene.remove(projectile.mesh);
-        //TODO: also remove projectile from list of projectiles
-
+        this.scene.remove(projectile.bb);
+        projectile.ignore = true;
     }
 }

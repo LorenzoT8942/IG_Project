@@ -9,6 +9,9 @@ export class AssetLoader {
         this.mutantAttackAnim = null;
         this.mutantDeathAnim = null;
         this.mutantLoaded = false;
+
+        this.boxModel = null;
+        this.boxModelLoaded = false;
     }
 
     loadMutant(){
@@ -24,27 +27,37 @@ export class AssetLoader {
             })
 
 
-            this.fbxLoader.load('/public/models/mutant/anim/mutant_run.fbx', (run_fbx) => {
+            this.fbxLoader.load('/models/mutant/anim/mutant_run.fbx', (run_fbx) => {
                 this.mutantRunAnim = run_fbx.animations[0];
 
-                this.fbxLoader.load('/public/models/mutant/anim/mutant_punch.fbx', (attack_fbx) => {
+                this.fbxLoader.load('/models/mutant/anim/mutant_punch.fbx', (attack_fbx) => {
                     this.mutantAttackAnim = attack_fbx.animations[0];
 
-                    this.fbxLoader.load('/public/models/mutant/anim/mutant_dying.fbx', (death_fbx) => {
+                    this.fbxLoader.load('/models/mutant/anim/mutant_dying.fbx', (death_fbx) => {
                         this.mutantDeathAnim = death_fbx.animations[0];
                         this.mutantLoaded = true;
-                        //console.log(this.mutantRunAnim);
-                        //console.log(this.mutantDeathAnim);
-                        //console.log(this.mutantAttackAnim);
                     })
                 })
             })
         })
     }
 
-    load(){
-        this.loadMutant();
+    loadUpgradeBox(){
+        this.gltfLoader.load('/public/models/upgrade_box/scene.gltf', (gltf) => {
+            this.boxModel = gltf.scene;
+
+            this.boxModel.traverse(function (staff) {
+                if (staff.isObject3D) {
+                    staff.castShadow = true;
+                }
+            })
+
+            this.boxModelLoaded = true;
+        })
     }
 
-
+    load(){
+        this.loadMutant();
+        this.loadUpgradeBox();
+    }
 }

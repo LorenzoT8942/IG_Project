@@ -8,6 +8,13 @@ import {Player} from "./Player.js";
 import {Demon} from "./Demon.js";
 import {ProjectileManager} from "./ProjectileManager.js";
 import {AssetLoader} from "./AssetLoader.js";
+import {LevelManager} from "./LevelManager.js";
+import {FontLoader} from "three/examples/jsm/loaders/FontLoader.js";
+import {TextGeometry} from "three/examples/jsm/geometries/TextGeometry.js";
+
+let hpBar = document.getElementById('hp-bar');
+let pauseOverlay = document.getElementById('pauseOverlay');
+let defeatOverlay = document.getElementById('defeatOverlay');
 
 const loader = new GLTFLoader();
 const fbxLoader  = new FBXLoader();
@@ -30,15 +37,16 @@ let groundMesh;
 let prevPosition = new THREE.Vector3(0,0 ,0);
 let headBone;
 let projectileManager = new ProjectileManager(scene, enemies);
+let paused = false;
+let defeat = false;
 
+let spawned = false;
+let started = false;
 //Renderer initialization
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.setAnimationLoop(animate);
 document.body.appendChild(renderer.domElement);
-
-let spawned = false;
-
 
 let staff;
 loader.load('/public/models/staff/scene.gltf', (gltf) => {
@@ -67,8 +75,9 @@ loader.load('/public/models/pine/scene.gltf', (gltf) => {
     scene.add(pine);
 })
 
+let fire;
 loader.load('/public/models/fire/scene.gltf', (gltf) => {
-    let fire = gltf.scene;
+    fire = gltf.scene;
     const mixer = new THREE.AnimationMixer(fire);
     fire.position.set(0, -1.7, 0);
     let clips = gltf.animations;
@@ -83,6 +92,8 @@ animationsFolder.open();
 
 const character = new Player(scene, fbxLoader);
 character.load();
+let levelManager = new LevelManager(scene, enemies, character, assetLoader);
+
 //Sky
 const sky = new Sky()
 addSky(sky);
@@ -113,7 +124,7 @@ const material = new THREE.MeshStandardMaterial( {color: 0x00ff00} );
 const cube = new THREE.Mesh(geometry, material);
 cube.position.set(7, 1, 1);
 cube.castShadow = true;
-scene.add(cube);
+//scene.add(cube);
 
 
 //Terrain initialization
@@ -142,11 +153,6 @@ document.addEventListener('keydown', function(event) {
     }
 });
 
-//Lock first person camera
-document.getElementById('btnPlay').onclick = ()=>{
-    controls.lock();
-}
-
 const onKeyDown = function(event) {
     switch (event.code) {
         case 'ArrowUp':
@@ -172,6 +178,15 @@ const onKeyDown = function(event) {
             moveRight = true;
             pressed.add(event.code);
             character.animations.run();
+            break;
+        case 'Escape':
+            paused = paused === false;
+            pauseOverlay.style.visibility = paused ? 'visible' : 'hidden';
+            break;
+
+        case 'Space':
+            //start();
+            levelManager.start();
             break;
     }
 };
@@ -219,27 +234,30 @@ function onWindowResize() {
 
 function onMouseDown(event){
 
-    pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-    pointer.y = -( event.clientY / window.innerHeight ) * 2 + 1;
+    if (!paused){
+        pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+        pointer.y = -( event.clientY / window.innerHeight ) * 2 + 1;
 
-    //console.log("pointer", pointer);
-    raycaster.setFromCamera(pointer, camera);
-    const intersects = raycaster.intersectObject(groundMesh);
-    let dir;
+        //console.log("pointer", pointer);
+        raycaster.setFromCamera(pointer, camera);
+        const intersects = raycaster.intersectObject(groundMesh);
+        let dir;
 
-    if (intersects.length > 0){
-        //dir = new THREE.Vector2(intersects[0].point.x, intersects[0].point.z);
-        dir = new THREE.Vector2(pointer.x, -pointer.y);
-        //console.log(dir.x, dir.y);
+        if (intersects.length > 0){
+            //dir = new THREE.Vector2(intersects[0].point.x, intersects[0].point.z);
+            dir = new THREE.Vector2(pointer.x, -pointer.y);
+            //console.log(dir.x, dir.y);
+        }
+
+        projectileManager.spawnProjectile(dir, character.model.position);
     }
-
-    projectileManager.spawnProjectile(dir, character.model.position);
 }
 
 document.addEventListener('keydown', onKeyDown, false);
 document.addEventListener('keyup', onKeyUp, false);
 window.addEventListener('resize', onWindowResize, false);
 document.addEventListener('mousedown', onMouseDown, false);
+
 
 
 function createTerrain() {
@@ -315,19 +333,34 @@ scene.add(axesHelper);
 const cameraDistance = 6;
 const direction = new THREE.Vector3( 0, 0, 0);
 const rotationMatrix = new THREE.Matrix4();
-//console.log(scene.children);
 
-//const testenemy = new Demon(scene, fbxLoader, enemies);
-//testenemy.load();
+function start() {
 
+    if (!started) {
+        started = true;
+        spawn(5);
+
+        setTimeout(() => {
+            spawn(5);
+        }, 2000)
+
+        setTimeout(() => {
+            spawn(5);
+        }, 4000)
+
+        setTimeout(() => {
+            spawn(5);
+        }, 8000)
+    }
+}
+
+function spawn(quantity){
+    for(let i = 0; i < quantity; i++){
+        enemies.push(new Demon(scene, assetLoader, character));
+    }
+}
 
 function animate() {
-    cube.rotation.x += 0.01;
-    cube.rotation.y += 0.01;
-    if (staff){
-        staff.rotation.y += 0.01;
-    }
-
 
     const time = performance.now();
     const delta = (time - prevTime) / 1000;
@@ -355,59 +388,47 @@ function animate() {
 
     prevTime = time;
 
-    if (character.modelReady) {
-        prevPosition = character.model.position;
-        character.mixer.update(clock.getDelta());
-        camera.lookAt(character.model.position);
-        character.model.position.x = character.model.position.x + velocity.x *delta;
-        character.model.position.z = character.model.position.z + velocity.z *delta;
-        camera.position.set(character.model.position.x, character.model.position.y + cameraDistance , character.model.position.z + cameraDistance);
+    if (!paused){
+        if (character.modelReady) {
+            prevPosition = character.model.position;
+            character.mixer.update(clock.getDelta());
+            camera.lookAt(character.model.position);
+            character.model.position.x = character.model.position.x + velocity.x *delta;
+            character.model.position.z = character.model.position.z + velocity.z *delta;
+            camera.position.set(character.model.position.x, character.model.position.y + cameraDistance , character.model.position.z + cameraDistance);
 
+            if (!started){
 
-        //TODO: vedere quaternion
-        if (direction.length() > 0){
-            direction.normalize();
-            const targetQuaternion = new THREE.Quaternion();
-            rotationMatrix.lookAt(direction, new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0));
-            targetQuaternion.setFromRotationMatrix(rotationMatrix);
-            character.model.quaternion.rotateTowards(targetQuaternion, delta * 10);
-        }
-
-        if (assetLoader.mutantLoaded){
-            if (!spawned){
-                for (let i = 0; i < 5; i++) {
-                   enemies.push(new Demon(scene, fbxLoader, assetLoader))
-                }
-                spawned = true;
             }
 
-            enemies.forEach(enemy => {
-                enemy.moveTowards(character.model, delta);
-                enemy.mixer.update(delta);
-            })
+            //TODO: vedere quaternion
+            if (direction.length() > 0){
+                direction.normalize();
+                const targetQuaternion = new THREE.Quaternion();
+                rotationMatrix.lookAt(direction, new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0));
+                targetQuaternion.setFromRotationMatrix(rotationMatrix);
+                character.model.quaternion.rotateTowards(targetQuaternion, delta * 10);
+            }
 
+
+            if (assetLoader.mutantLoaded){
+                if (!spawned && started){
+                    for (let i = 0; i < 5; i++) {
+                        enemies.push(new Demon(scene, assetLoader, character))
+                    }
+                    spawned = true;
+                }
+
+                enemies.forEach(enemy => {
+                    enemy.moveTowards(character.model, delta, performance.now());
+                    enemy.mixer.update(delta);
+                })
+            }
+            projectileManager.updatePositions(delta);
 
         }
-
-        //testenemy.mixer.update(delta);
-        //testenemy.moveTowards(character.model, delta);
-
-
-
-
-            /*
-            projectiles.forEach(p => {
-                p.mesh.translateZ(spellSpeed * delta* p.dir.y);
-                p.mesh.translateX(spellSpeed * delta* p.dir.x);
-                p.bb.setFromObject(p.mesh);
-                if (demon.isHit(p)){
-                    scene.remove(p.mesh);
-                }
-            })
-             */
-        projectileManager.updatePositions(delta);
-
     }
 
     renderer.render(scene, camera);
 }
+
