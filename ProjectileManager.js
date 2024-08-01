@@ -52,11 +52,8 @@ export class ProjectileManager {
                 if (!e.isDead){
                     e.applyDamage(p.damage);
                     console.log(`enemy has ${e.hp} HP`);
-                    if (e.isDead){
-
-                    }
+                    this.removeProjectile(p);
                 }
-                this.removeProjectile(p);
             }
         })
     }

@@ -172,6 +172,7 @@ export class Demon {
             this.animations.die();
             this.scene.remove(this.boundingBoxHelper);
             this.scene.remove(this.hitbox);
+            this.scene.remove(this.supportBox);
         }
     }
 
