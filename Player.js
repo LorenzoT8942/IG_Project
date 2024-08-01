@@ -7,6 +7,9 @@ export class Player {
     constructor(scene, fbxLoader) {
         this.maxHp = 1000;
         this.hp = this.maxHp;
+        this.attackDamage = 10;
+        this.attackSpeed = 1;
+        this. tripleShot = false;
         this.hpBar = document.getElementById("hp-bar");
         this.model = null;
         this.activeAction = null;
@@ -19,6 +22,8 @@ export class Player {
         this.scene = scene;
         this.animationActions = [];
         this.fbxLoader = fbxLoader;
+        this.hitbox = new THREE.Box3();
+
 
         this.animations = {
             idle: () => {
@@ -78,14 +83,7 @@ export class Player {
                 this.animationActions.push(this.runningAction);
             })
 
-            const skelHelper = new SkeletonHelper(this.model);
-            //this.scene.add(skelHelper);
-            //console.log(skelHelper.bones);
-            skelHelper.bones.forEach(bone => {
-                //console.log(bone.name);
-            })
-            const boneName = "mixamorigHead";
-            this.headBone = this.model.getObjectByName(boneName);
+            this.hitbox.setFromObject(this.model);
         })
     }
 
@@ -95,6 +93,27 @@ export class Player {
         this.hpBar.style.width = `${percentage}%`;
         if (this.hp <= 0){
             this.isDead = true;
+        }
+    }
+
+    applyUpgrade(){
+        const random = Math.floor(Math.random()*3);
+        switch (random) {
+            case 0:
+                this.attackDamage += 10;
+                break;
+
+            case 1:
+                this.attackSpeed += 0.25;
+                break;
+
+            case 2:
+                if (this.tripleShot === false){
+                    this.tripleShot = true;
+                }else{
+                    this.applyUpgrade();
+                }
+                break;
         }
     }
 }

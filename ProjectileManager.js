@@ -5,7 +5,6 @@ export class ProjectileManager {
     constructor(scene, enemies) {
         this.scene = scene;
         this.projectiles = [];
-        this.projectileDamage = 10;
         this.projectileSpeed = 50;
         this.enemies = enemies;
         //this.geometry = new THREE.SphereGeometry(0.1, 8, 4);
@@ -14,7 +13,7 @@ export class ProjectileManager {
         //this.pBox = new THREE.Box3().setFromObject(this.sphereMesh);
     }
 
-    spawnProjectile(direction, spawnPos) {
+    spawnProjectile(direction, spawnPos, dmg) {
         let geometry = new THREE.SphereGeometry(0.1, 8, 4);
         let material = new THREE.MeshBasicMaterial({color: "aqua"});
         let sphereMesh = new THREE.Mesh(geometry, material);
@@ -23,6 +22,7 @@ export class ProjectileManager {
             mesh : sphereMesh,
             dir : direction.normalize(),
             bb: pBox,
+            damage: dmg,
             ignore: false
         };
 
@@ -50,12 +50,13 @@ export class ProjectileManager {
         this.enemies.forEach(e => {
             if (e.hitbox.intersectsBox(p.bb) && p.ignore === false) {
                 if (!e.isDead){
-                    e.applyDamage(this.projectileDamage);
+                    e.applyDamage(p.damage);
+                    console.log(`enemy has ${e.hp} HP`);
                     if (e.isDead){
-                        this.removeProjectile(p);
+
                     }
                 }
-
+                this.removeProjectile(p);
             }
         })
     }
@@ -65,4 +66,15 @@ export class ProjectileManager {
         this.scene.remove(projectile.bb);
         projectile.ignore = true;
     }
+
+    rotateVector(dir, angle) {
+        const radians = angle * (Math.PI / 180);
+        const cos = Math.cos(radians);
+        const sin = Math.sin(radians);
+
+        const xNew = dir.x * cos - dir.y * sin;
+        const yNew = dir.x * sin + dir.y * cos;
+
+        return new THREE.Vector2(xNew, yNew);
+    };
 }

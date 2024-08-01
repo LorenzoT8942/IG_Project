@@ -1,4 +1,4 @@
-
+import * as THREE from 'three';
 
 export class AssetLoader {
     constructor(gltfLoader, fbxLoader) {
@@ -40,15 +40,18 @@ export class AssetLoader {
                 })
             })
         })
+
+
     }
 
     loadUpgradeBox(){
         this.gltfLoader.load('/public/models/upgrade_box/scene.gltf', (gltf) => {
             this.boxModel = gltf.scene;
+            this.boxModel.scale.set(0.03, 0.03, 0.03);
 
-            this.boxModel.traverse(function (staff) {
-                if (staff.isObject3D) {
-                    staff.castShadow = true;
+            this.boxModel.traverse(function (box) {
+                if (box.isObject3D) {
+                    box.castShadow = true;
                 }
             })
 

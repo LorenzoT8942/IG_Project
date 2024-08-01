@@ -19,7 +19,7 @@ let defeatOverlay = document.getElementById('defeatOverlay');
 const loader = new GLTFLoader();
 const fbxLoader  = new FBXLoader();
 const assetLoader = new AssetLoader(loader, fbxLoader);
-assetLoader.loadMutant();
+assetLoader.load();
 
 const scene = new THREE.Scene();
 const textureLoader = new THREE.TextureLoader();
@@ -31,6 +31,7 @@ const controls = new PointerLockControls(camera, renderer.domElement);
 const clock = new THREE.Clock();
 const raycaster = new THREE.Raycaster();
 let enemies = [];
+let boxes = [];
 const pressed = new Set();
 const pointer = new THREE.Vector2();
 let groundMesh;
@@ -42,6 +43,7 @@ let defeat = false;
 
 let spawned = false;
 let started = false;
+let mapEdgeLength = 100;
 //Renderer initialization
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
@@ -92,7 +94,7 @@ animationsFolder.open();
 
 const character = new Player(scene, fbxLoader);
 character.load();
-let levelManager = new LevelManager(scene, enemies, character, assetLoader);
+let levelManager = new LevelManager(scene, enemies, boxes, character, assetLoader, mapEdgeLength);
 
 //Sky
 const sky = new Sky()
@@ -249,7 +251,12 @@ function onMouseDown(event){
             //console.log(dir.x, dir.y);
         }
 
-        projectileManager.spawnProjectile(dir, character.model.position);
+        projectileManager.spawnProjectile(dir, character.model.position, character.attackDamage);
+        if (character.tripleShot){
+            const angle = 10;
+            projectileManager.spawnProjectile(projectileManager.rotateVector(dir, angle), character.model.position, character.attackDamage);
+            projectileManager.spawnProjectile(projectileManager.rotateVector(dir, -angle), character.model.position, character.attackDamage);
+        }
     }
 }
 
@@ -261,8 +268,8 @@ document.addEventListener('mousedown', onMouseDown, false);
 
 
 function createTerrain() {
-    const width = 60;
-    const height = 60;
+    const width = mapEdgeLength;
+    const height = mapEdgeLength;
     const geometry = new THREE.PlaneGeometry(width, height, 100, 100);
     geometry.rotateX(-Math.PI / 2);
 
@@ -392,6 +399,7 @@ function animate() {
         if (character.modelReady) {
             prevPosition = character.model.position;
             character.mixer.update(clock.getDelta());
+            character.hitbox.setFromObject(character.model);
             camera.lookAt(character.model.position);
             character.model.position.x = character.model.position.x + velocity.x *delta;
             character.model.position.z = character.model.position.z + velocity.z *delta;
@@ -410,7 +418,6 @@ function animate() {
                 character.model.quaternion.rotateTowards(targetQuaternion, delta * 10);
             }
 
-
             if (assetLoader.mutantLoaded){
                 if (!spawned && started){
                     for (let i = 0; i < 5; i++) {
@@ -426,6 +433,12 @@ function animate() {
             }
             projectileManager.updatePositions(delta);
 
+            if (assetLoader.boxModelLoaded){
+                boxes.forEach(box => {
+                    box.checkHit();
+                    box.animate();
+                })
+            }
         }
     }
 
