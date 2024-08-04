@@ -8,7 +8,7 @@
             margin: 0;
             overflow: hidden;
         }
-        #pause-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; }
+        #menu-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; }
         #pauseOverlay {
             position: absolute;
             top: 0;
@@ -38,6 +38,7 @@
             font-size: 48px;
             font-weight: bold;
             visibility: hidden;
+            text-align: center;
         }
         .hp-bar-container {
             position: absolute;
@@ -53,12 +54,30 @@
             height: 100%;
             background-color: #b31b1b;
         }
+
+        #youdied {
+            position: absolute;
+            top: 35vh;
+            left: 40vw;
+            font-size: 100px;
+            color: #a60202;
+        }
+
+        #pressSpace {
+            position: absolute;
+            top: 50vh;
+            left: 40vw;
+            color: white;
+        }
     </style>
 </head>
 <body>
-    <div id="pause-container">
+    <div id="menu-container">
         <div id="pauseOverlay">PAUSE</div>
-        <div id="defeatOverlay">YOU DIED</div>
+        <div id="defeatOverlay">
+            <p id="youdied"> YOU DIED</p>
+            <p id="pressSpace"> Press SPACE to restart</p>
+        </div>
     </div>
     <div class="hp-bar-container">
         <div class="hp-bar" id="hp-bar"></div>

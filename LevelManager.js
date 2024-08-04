@@ -12,6 +12,7 @@ export class LevelManager {
         this.assetLoader = assetLoader;
         this.mapEdgeLength = mapEdgeLength;
         this.boxes = boxes;
+        this.defeatOverlay = document.getElementById("defeatOverlay");
     }
 
     start() {
@@ -47,6 +48,13 @@ export class LevelManager {
         box.spawn();
     }
 
+    showDeadView (){
+        this.defeatOverlay.style.visibility = 'visible';
+    }
+
+    restart(){
+        location.reload();
+    }
 
 
 

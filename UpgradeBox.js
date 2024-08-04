@@ -27,7 +27,7 @@ export class UpgradeBox {
         this.boxLight.shadow.mapSize.height = window.innerHeight;
         this.boxLight.shadow.mapSize.width = window.innerWidth;
         this.boxLight.shadow.camera.near = 0.5;
-        this.boxLight.shadow.camera.far = 1000;
+        this.boxLight.shadow.camera.far = 100;
         //this.boxLight.shadow.bias = 0.0003;
         this.scene.add(this.boxLight);
 
@@ -44,7 +44,6 @@ export class UpgradeBox {
             this.scene.remove(this.hitbox);
             this.scene.remove(this.boxLight);
             this.ignore = true;
-            console.log("bonus ottenuto");
             this.player.applyUpgrade();
         }
     }

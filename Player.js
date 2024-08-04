@@ -14,8 +14,11 @@ export class Player {
         this.model = null;
         this.activeAction = null;
         this.lastAction = null;
+
         this.idleAction = null;
         this.runningAction = null;
+        this.deathAction = null;
+
         this.mixer = null;
         this.headBone = null;
         this.modelReady = false;
@@ -32,6 +35,10 @@ export class Player {
 
             run: () => {
                 this.setAction(this.animationActions[1]);
+            },
+
+            die: () => {
+                this.setAction(this.animationActions[2]);
             }
         }
     }
@@ -62,7 +69,7 @@ export class Player {
         this.fbxLoader.load('/public/models/character/character.fbx', (fbx) => {
             this.model = fbx;
             this.model.scale.set(0.01, 0.01, 0.01);
-            this.model.position.set(0.01, -1.4, 0.01);
+            this.model.position.set(0, -1.4, 0);
 
             this.model.traverse(function (charModel) {
                 if ( charModel.isObject3D)  charModel.castShadow = true;
@@ -82,6 +89,12 @@ export class Player {
                 this.runningAction = this.mixer.clipAction(runningfbx.animations[0]);
                 this.animationActions.push(this.runningAction);
             })
+            this.fbxLoader.load('/public/models/character/anim/player_death.fbx', (deathfbx) => {
+                this.deathAction = this.mixer.clipAction(deathfbx.animations[0]);
+                this.deathAction.loop = THREE.LoopOnce;
+                this.deathAction.clampWhenFinished = true;
+                this.animationActions.push(this.deathAction);
+            })
 
             this.hitbox.setFromObject(this.model);
         })
@@ -93,6 +106,8 @@ export class Player {
         this.hpBar.style.width = `${percentage}%`;
         if (this.hp <= 0){
             this.isDead = true;
+            this.animations.die();
+
         }
     }
 

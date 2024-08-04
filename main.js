@@ -159,36 +159,50 @@ const onKeyDown = function(event) {
     switch (event.code) {
         case 'ArrowUp':
         case 'KeyW':
-            moveForward = true;
-            pressed.add(event.code);
-            character.animations.run();
+            if (!character.isDead){
+                moveForward = true;
+                pressed.add(event.code);
+                character.animations.run();
+            }
             break;
         case 'ArrowLeft':
         case 'KeyA':
-            moveLeft = true;
-            pressed.add(event.code);
-            character.animations.run();
+            if (!character.isDead){
+                moveLeft = true;
+                pressed.add(event.code);
+                character.animations.run();
+            }
             break;
         case 'ArrowDown':
         case 'KeyS':
-            moveBackward = true;
-            pressed.add(event.code);
-            character.animations.run();
+            if (!character.isDead){
+                moveBackward = true;
+                pressed.add(event.code);
+                character.animations.run();
+            }
             break;
         case 'ArrowRight':
         case 'KeyD':
-            moveRight = true;
-            pressed.add(event.code);
-            character.animations.run();
+            if (!character.isDead){
+                moveRight = true;
+                pressed.add(event.code);
+                character.animations.run();
+            }
             break;
+
         case 'Escape':
-            paused = paused === false;
-            pauseOverlay.style.visibility = paused ? 'visible' : 'hidden';
+            if (!character.isDead){
+                paused = paused === false;
+                pauseOverlay.style.visibility = paused ? 'visible' : 'hidden';
+            }
             break;
 
         case 'Space':
             //start();
             levelManager.start();
+            if (character.isDead){
+                levelManager.restart();
+            }
             break;
     }
 };
@@ -198,7 +212,7 @@ const onKeyUp = function(event) {
         case 'KeyW':
             moveForward = false;
             pressed.delete(event.code);
-            if(!pressed.size){
+            if(!pressed.size && !character.isDead){
                 character.animations.idle();
             }
             break;
@@ -206,7 +220,7 @@ const onKeyUp = function(event) {
         case 'KeyA':
             moveLeft = false;
             pressed.delete(event.code);
-            if(!pressed.size){
+            if(!pressed.size && !character.isDead){
                 character.animations.idle();
             }
             break;
@@ -214,7 +228,7 @@ const onKeyUp = function(event) {
         case 'KeyS':
             moveBackward = false;
             pressed.delete(event.code);
-            if(!pressed.size){
+            if(!pressed.size && !character.isDead){
                 character.animations.idle();
             }
             break;
@@ -222,7 +236,7 @@ const onKeyUp = function(event) {
         case 'KeyD':
             moveRight = false;
             pressed.delete(event.code);
-            if(!pressed.size){
+            if(!pressed.size && !character.isDead){
                 character.animations.idle();
             }
             break;
@@ -377,21 +391,36 @@ function animate() {
 
     //Velocity multiplied by the time passed between one frame and the next
     if (moveForward) {
-        velocity.z -= 400.0 * delta;
-        direction.z -= 1;
+        if (!character.isDead){
+            velocity.z -= 400.0 * delta;
+            direction.z -= 1;
+        }
     }
     if (moveBackward){
-        velocity.z += 400.0 * delta;
-        direction.z += 1;
+        if (!character.isDead) {
+            velocity.z += 400.0 * delta;
+            direction.z += 1;
+        }
     }
     if (moveLeft){
-        velocity.x -= 400.0 * delta;
-        direction.x -= 1;
+        if (!character.isDead) {
+            velocity.x -= 400.0 * delta;
+            direction.x -= 1;
+        }
     }
     if (moveRight){
-        velocity.x += 400.0 * delta;
-        direction.x += 1;
+        if (!character.isDead) {
+            velocity.x += 400.0 * delta;
+            direction.x += 1;
+        }
     }
+
+    if (character.isDead){
+        velocity.x = 0;
+        velocity.z = 0;
+    }
+
+
 
     prevTime = time;
 
@@ -404,10 +433,6 @@ function animate() {
             character.model.position.x = character.model.position.x + velocity.x *delta;
             character.model.position.z = character.model.position.z + velocity.z *delta;
             camera.position.set(character.model.position.x, character.model.position.y + cameraDistance , character.model.position.z + cameraDistance);
-
-            if (!started){
-
-            }
 
             //TODO: vedere quaternion
             if (direction.length() > 0){
@@ -440,6 +465,10 @@ function animate() {
                 })
             }
         }
+    }
+
+    if (character.isDead){
+        levelManager.showDeadView();
     }
 
     renderer.render(scene, camera);
