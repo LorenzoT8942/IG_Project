@@ -18,7 +18,8 @@ let defeatOverlay = document.getElementById('defeatOverlay');
 
 const loader = new GLTFLoader();
 const fbxLoader  = new FBXLoader();
-const assetLoader = new AssetLoader(loader, fbxLoader);
+let enemies = [];
+const assetLoader = new AssetLoader(loader, fbxLoader, enemies);
 assetLoader.load();
 
 const scene = new THREE.Scene();
@@ -30,7 +31,7 @@ const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerH
 const controls = new PointerLockControls(camera, renderer.domElement);
 const clock = new THREE.Clock();
 const raycaster = new THREE.Raycaster();
-let enemies = [];
+
 let boxes = [];
 const pressed = new Set();
 const pointer = new THREE.Vector2();
@@ -355,31 +356,7 @@ const cameraDistance = 6;
 const direction = new THREE.Vector3( 0, 0, 0);
 const rotationMatrix = new THREE.Matrix4();
 
-function start() {
-
-    if (!started) {
-        started = true;
-        spawn(5);
-
-        setTimeout(() => {
-            spawn(5);
-        }, 2000)
-
-        setTimeout(() => {
-            spawn(5);
-        }, 4000)
-
-        setTimeout(() => {
-            spawn(5);
-        }, 8000)
-    }
-}
-
-function spawn(quantity){
-    for(let i = 0; i < quantity; i++){
-        enemies.push(new Demon(scene, assetLoader, character));
-    }
-}
+let enemiesLoaded = false;
 
 function animate() {
 
@@ -420,8 +397,6 @@ function animate() {
         velocity.z = 0;
     }
 
-
-
     prevTime = time;
 
     if (!paused){
@@ -444,17 +419,19 @@ function animate() {
             }
 
             if (assetLoader.mutantLoaded){
-                if (!spawned && started){
-                    for (let i = 0; i < 5; i++) {
-                        enemies.push(new Demon(scene, assetLoader, character))
+                if (!enemiesLoaded){
+                    for (let i = 0; i < 50; i++) {
+                        enemies.push(new Demon(scene, assetLoader, character, false));
                     }
-                    spawned = true;
+                    enemiesLoaded = true;
+                }else{
+                    enemies.forEach(enemy => {
+                        enemy.moveTowards(character.model, delta, performance.now());
+                        enemy.mixer.update(delta);
+                    })
                 }
 
-                enemies.forEach(enemy => {
-                    enemy.moveTowards(character.model, delta, performance.now());
-                    enemy.mixer.update(delta);
-                })
+                levelManager.checkKillCount();
             }
             projectileManager.updatePositions(delta);
 
@@ -470,7 +447,6 @@ function animate() {
     if (character.isDead){
         levelManager.showDeadView();
     }
-
     renderer.render(scene, camera);
 }
 

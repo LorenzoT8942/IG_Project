@@ -1,7 +1,8 @@
 import * as THREE from 'three';
+import {Demon} from "./Demon.js";
 
 export class AssetLoader {
-    constructor(gltfLoader, fbxLoader) {
+    constructor(gltfLoader, fbxLoader, enemies) {
         this.gltfLoader = gltfLoader;
         this.fbxLoader = fbxLoader;
         this.mutantModel = null;
@@ -12,6 +13,8 @@ export class AssetLoader {
 
         this.boxModel = null;
         this.boxModelLoaded = false;
+
+        this.enemies = enemies;
     }
 
     loadMutant(){
@@ -25,7 +28,6 @@ export class AssetLoader {
             this.mutantModel.traverse((charModel) => {
                 if (charModel.isObject3D )  charModel.castShadow = true;
             })
-
 
             this.fbxLoader.load('/models/mutant/anim/mutant_run.fbx', (run_fbx) => {
                 this.mutantRunAnim = run_fbx.animations[0];

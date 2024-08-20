@@ -4,23 +4,30 @@ import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils';
 
 export class Demon {
 
-    constructor(scene, assetLoader, target) {
+    constructor(scene, assetLoader, target, elite) {
         this.hp = 30;
         this.attack = 10;
         this.moveSpeed = 2;
         this.attackRange = 4;
         this.target = target;
-
+        this.isElite = elite;
         this.isDead = false;
         this.isAttacking = false;
         this.moving = true;
         this.lastAttack = 0;
         this.assetLoader = assetLoader;
         this.attackInterval = 1000;
+        this.isSpawned = false;
 
         this.animationActions = [];
         this.scene = scene;
         this.model = SkeletonUtils.clone(this.assetLoader.mutantModel);
+        if (elite){
+            this.model.scale.set(0.02, 0.02, 0.02);
+            this.hp = 1000;
+            this.attack = 100;
+            this.moveSpeed = 5;
+        }
         this.mixer = new THREE.AnimationMixer(this.model);
         //console.log(assetLoader.mutantRunAnim);
         //console.log(assetLoader.mutantAttackAnim);
@@ -64,7 +71,7 @@ export class Demon {
                 this.setAction(this.animationActions[2]);
             }
         }
-
+        this.model.position.set(200, -1.4, 200);
         this.spawn();
     }
 
@@ -80,15 +87,6 @@ export class Demon {
 
 
     spawn () {
-        //compute random spawn position
-        const radius = 15;
-        const angle = Math.random()* 360;
-        const spawnX = radius * Math.cos(angle);
-        const spawnZ = radius * Math.sin(angle);
-
-        //clone model from the loaded one
-        this.model.position.set(this.model.position.x + spawnX, this.model.position.y, this.model.position.z + spawnZ);
-
         //Create hitbox for the cloned model
         const hitboxGeometry = new THREE.BoxGeometry(1, 2);
         const hitboxMaterial = new THREE.MeshBasicMaterial({
@@ -121,13 +119,23 @@ export class Demon {
         this.scene.add(this.model);
 
         this.boundingBoxHelper = new Box3Helper(this.hitbox, 0xffff00);
-        this.scene.add(this.boundingBoxHelper);
+        //this.scene.add(this.boundingBoxHelper);
     }
 
+    setOnScene(){
+        const radius = 40;
+        const angle = Math.random()* 360;
+        const spawnX = radius * Math.cos(angle);
+        const spawnZ = radius * Math.sin(angle);
+
+        //clone model from the loaded one
+        this.model.position.set(this.target.model.position.x + spawnX, this.model.position.y, this.target.model.position.z + spawnZ);
+        this.isSpawned = true;
+    }
 
     moveTowards(object, delta, time){
 
-        if (!this.isDead){
+        if (!this.isDead && this.isSpawned){
             const direction = new THREE.Vector3();
             direction.subVectors(this.target.model.position, this.model.position);
             //TODO
@@ -147,23 +155,6 @@ export class Demon {
             this.updateHitbox();
         }
     }
-
-    /*
-    isHit(p){
-
-        if (this.hitbox.intersectsBox(p.bb)){
-            console.log("hitbox", this.hitbox);
-            if (!this.isDead){
-                this.hp -= 10;
-                if (this.hp <= 0){
-                    this.isDead = true;
-                }
-            }
-            return true;
-        }
-        return false;
-    }
-     */
 
     applyDamage(damage){
         this.hp -= damage;

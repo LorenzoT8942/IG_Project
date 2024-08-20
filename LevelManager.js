@@ -13,6 +13,8 @@ export class LevelManager {
         this.mapEdgeLength = mapEdgeLength;
         this.boxes = boxes;
         this.defeatOverlay = document.getElementById("defeatOverlay");
+        this.lastSpawned = -1;
+        this.eliteSpawned = false;
     }
 
     start() {
@@ -37,9 +39,25 @@ export class LevelManager {
     }
 
     spawnEnemies(quantity){
-        for(let i = 0; i < quantity; i++){
+        this.lastSpawned += 1;
+        const newLast = this.lastSpawned + quantity;
+        /*
+        for(let i = this.lastSpawned; i < this.lastSpawned + quantity; i++){
             this.enemies.push(new Demon(this.scene, this.assetLoader, this.player));
         }
+
+         */
+        while (this.lastSpawned < newLast){
+            this.enemies[this.lastSpawned].setOnScene();
+            console.log(this.lastSpawned);
+            console.log(this.enemies[this.lastSpawned]);
+            this.lastSpawned++;
+        }
+    }
+
+    spawnBoss (){
+        this.enemies.push(new Demon(this.scene,  this.assetLoader,  this.player, true));
+        this.enemies[this.enemies.length-1].setOnScene();
     }
 
     spawnBox(){
@@ -55,6 +73,22 @@ export class LevelManager {
     restart(){
         location.reload();
     }
+
+    checkKillCount(){
+        let counter = 0;
+
+        if (!this.eliteSpawned){
+            this.enemies.forEach(enemy => {
+                if (enemy.isDead) counter++;
+            })
+
+            if (counter === 15){
+                this.spawnBoss();
+                this.eliteSpawned = true;
+            }
+        }
+    }
+
 
 
 
