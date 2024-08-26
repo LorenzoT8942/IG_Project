@@ -9,6 +9,8 @@ import {Demon} from "./Demon.js";
 import {ProjectileManager} from "./ProjectileManager.js";
 import {AssetLoader} from "./AssetLoader.js";
 import {LevelManager} from "./LevelManager.js";
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils';
+import {DirectionalLight, PointLight} from "three";
 
 let hpBar = document.getElementById('hp-bar');
 let pauseOverlay = document.getElementById('pauseOverlay');
@@ -56,23 +58,10 @@ renderer.shadowMap.enabled = true;
 renderer.setAnimationLoop(animate);
 document.body.appendChild(renderer.domElement);
 
-let staff;
-loader.load('/public/models/staff/scene.gltf', (gltf) => {
-    staff = gltf.scene;
-
-    staff.position.set(0, 0, 0);
-    staff.traverse(function (staff) {
-        if (staff.isObject3D) {
-            staff.castShadow = true;
-            staff.receiveShadow = true;
-        }
-    })
-    //scene.add(staff);
-})
 
 loader.load('/public/models/pine/scene.gltf', (gltf) => {
     let pine = gltf.scene;
-    pine.scale.set(0.05, 0.05, 0.05);
+    pine.scale.set(0.003, 0.003, 0.003);
     pine.position.set(0, -1.5, -10);
     pine.traverse(function (pine){
         if (pine.isObject3D){
@@ -80,7 +69,43 @@ loader.load('/public/models/pine/scene.gltf', (gltf) => {
             pine.receiveShadow = true;
         }
     })
-    scene.add(pine);
+
+    for (let i = 0; i < 60; i++) {
+        let x = Math.random() * mapEdgeLength - mapEdgeLength/2;
+        let z = Math.random() * mapEdgeLength - mapEdgeLength/2;
+        let treeClone = SkeletonUtils.clone(pine);
+        treeClone.position.setX(x);
+        treeClone.position.setZ(z);
+        scene.add(treeClone);
+    }
+})
+
+loader.load('/public/models/mushroomTree/scene.gltf', (gltf) => {
+    let mushroomTree = gltf.scene;
+    mushroomTree.scale.set(0.007, 0.007, 0.007);
+    mushroomTree.position.set(0, -1.5, -10);
+    mushroomTree.traverse(function (mushroomTree){
+        if (mushroomTree.isObject3D){
+            mushroomTree.castShadow = true;
+            mushroomTree.receiveShadow = true;
+        }
+    })
+
+    for (let i = 0; i < 20; i++) {
+        let x = Math.random() * mapEdgeLength - mapEdgeLength/2;
+        let z = Math.random() * mapEdgeLength - mapEdgeLength/2;
+        const randomAngle = Math.random() * 2 * Math.PI;
+
+        let mushroomClone = SkeletonUtils.clone(mushroomTree);
+        mushroomClone.position.setX(x);
+        mushroomClone.position.setZ(z);
+        mushroomClone.rotateY(randomAngle);
+        scene.add(mushroomClone);
+
+        let mushLight = new PointLight("#a6dc65", 10, 10);
+        mushLight.position.set(x, 1, z);
+        scene.add(mushLight);
+    }
 })
 
 let fire;
@@ -98,7 +123,7 @@ loader.load('/public/models/fire/scene.gltf', (gltf) => {
 // Create a perimeter (invisible walls)
 const wallThickness = 3;
 const wallHeight = 10;
-const perimeterMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, visible: true });
+const perimeterMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, visible: false });
 
 const walls = [
     new THREE.Mesh(new THREE.BoxGeometry(mapEdgeLength, wallHeight, wallThickness), perimeterMaterial),
@@ -123,7 +148,9 @@ animationsFolder.open();
 const character = new Player(scene, fbxLoader);
 character.load();
 let levelManager = new LevelManager(scene, enemies, boxes, character, assetLoader, mapEdgeLength);
-
+const characterLight = new PointLight('#e8a84a', 10, 10);
+characterLight.position.setY(1.2);
+scene.add(characterLight);
 //Sky
 const sky = new Sky()
 addSky(sky);
@@ -134,6 +161,8 @@ ambientLight.intensity = 5;
 scene.add( ambientLight );
 
  */
+
+/*
 const pointLight = new THREE.PointLight('#404040', 3000, 100); // White light, full intensity, distance 100
 pointLight.position.set(10, 10, 10); // Set light position
 pointLight.castShadow = true;
@@ -165,9 +194,29 @@ const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);  // Low intensity am
 scene.add(ambientLight);
 
 
+ */
+
+const ambientLight = new THREE.AmbientLight('#9796f1', 1); // Low intensity, soft bluish color
+scene.add(ambientLight);
+
+const moonLight = new THREE.DirectionalLight('#b5b5f3', 0.5); // Soft bluish light
+moonLight.position.set(50, 100, 50); // Position the light high above the scene
+moonLight.castShadow = true; // Optional, if you want shadows from the moonlight
+moonLight.shadow.mapSize.width = 2048;  // Shadow map resolution
+moonLight.shadow.mapSize.height = 2048;
+moonLight.shadow.camera.near = 0.5;
+moonLight.shadow.camera.far = 500;
+moonLight.shadow.camera.left = -50;
+moonLight.shadow.camera.right = 50;
+moonLight.shadow.camera.top = 50;
+moonLight.shadow.camera.bottom = -50;
+scene.add(moonLight);
+
+
 //Fog
-scene.fog = new THREE.FogExp2('#4a5a49', 0.03);
-gui.add(scene.fog, 'density', 0, 1, 0.001).name('Fog Density');
+//scene.fog = new THREE.FogExp2('#4a5a49', 0.03);
+scene.fog = new THREE.Fog(0x101020, 1, 100);
+//gui.add(scene.fog, 'density', 0, 1, 0.001).name('Fog Density');
 
 
 //Cube initialization
@@ -416,7 +465,7 @@ function addSky(sky) {
 //Axes initialization
 const axesHelper = new THREE.AxesHelper( 2 );
 axesHelper.setColors(new THREE.Color( 1, 0, 0 ), new THREE.Color( 0, 1, 0 ), new THREE.Color( 0, 0, 1 ))
-scene.add(axesHelper);
+//scene.add(axesHelper);
 
 const cameraDistance = 6;
 const direction = new THREE.Vector3( 0, 0, 0);
@@ -473,6 +522,9 @@ function animate() {
 
             character.model.position.x = character.model.position.x + velocity.x *delta;
             character.model.position.z = character.model.position.z + velocity.z *delta;
+            characterLight.position.x = character.model.position.x;
+            characterLight.position.z = character.model.position.z;
+
             for (const wall of walls) {
                 const wallBox = new THREE.Box3().setFromObject(wall);
                 if (character.hitbox.intersectsBox(wallBox)) {

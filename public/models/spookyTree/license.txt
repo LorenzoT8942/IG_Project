@@ -1,0 +1,11 @@
+Model Information:
+* title:	Spooky Tree
+* source:	https://sketchfab.com/3d-models/spooky-tree-2c9d935a7709402997e8232f7a4e05b1
+* author:	ctperron (https://sketchfab.com/ctperron)
+
+Model License:
+* license type:	CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/)
+* requirements:	Author must be credited. No commercial use.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Spooky Tree" (https://sketchfab.com/3d-models/spooky-tree-2c9d935a7709402997e8232f7a4e05b1) by ctperron (https://sketchfab.com/ctperron) licensed under CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/)
