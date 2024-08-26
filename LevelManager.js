@@ -4,6 +4,7 @@ import {UpgradeBox} from "./UpgradeBox.js";
 
 export class LevelManager {
 
+
     constructor(scene, enemies, boxes, player, assetLoader, mapEdgeLength) {
         this.started = false;
         this.player = player;
@@ -13,8 +14,11 @@ export class LevelManager {
         this.mapEdgeLength = mapEdgeLength;
         this.boxes = boxes;
         this.defeatOverlay = document.getElementById("defeatOverlay");
+        this.victoryOverlay = document.getElementById("victoryOverlay");
+
         this.lastSpawned = -1;
         this.eliteSpawned = false;
+
     }
 
     start() {
@@ -49,8 +53,8 @@ export class LevelManager {
          */
         while (this.lastSpawned < newLast){
             this.enemies[this.lastSpawned].setOnScene();
-            console.log(this.lastSpawned);
-            console.log(this.enemies[this.lastSpawned]);
+            //console.log(this.lastSpawned);
+            //console.log(this.enemies[this.lastSpawned]);
             this.lastSpawned++;
         }
     }
@@ -70,23 +74,35 @@ export class LevelManager {
         this.defeatOverlay.style.visibility = 'visible';
     }
 
+    showVictoryView () {
+        this.victoryOverlay.style.visibility = 'visible';
+    }
+
     restart(){
         location.reload();
     }
 
     checkKillCount(){
+        let kfe = 15;
         let counter = 0;
 
-        if (!this.eliteSpawned){
+        //if (!this.eliteSpawned){
             this.enemies.forEach(enemy => {
                 if (enemy.isDead) counter++;
             })
 
-            if (counter === 15){
+            if (counter === kfe && !this.eliteSpawned){
                 this.spawnBoss();
                 this.eliteSpawned = true;
             }
-        }
+
+            if (counter === kfe + 1){
+                //console.log("victory!");
+                this.showVictoryView();
+            }
+
+
+        //}
     }
 
 

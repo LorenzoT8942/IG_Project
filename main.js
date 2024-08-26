@@ -9,8 +9,6 @@ import {Demon} from "./Demon.js";
 import {ProjectileManager} from "./ProjectileManager.js";
 import {AssetLoader} from "./AssetLoader.js";
 import {LevelManager} from "./LevelManager.js";
-import {FontLoader} from "three/examples/jsm/loaders/FontLoader.js";
-import {TextGeometry} from "three/examples/jsm/geometries/TextGeometry.js";
 
 let hpBar = document.getElementById('hp-bar');
 let pauseOverlay = document.getElementById('pauseOverlay');
@@ -45,6 +43,13 @@ let defeat = false;
 let spawned = false;
 let started = false;
 let mapEdgeLength = 100;
+let cameraLocked = true;
+const unlockedCameraSpeed = 0.1;
+let cameraW = false;
+let cameraA = false;
+let cameraS = false;
+let cameraD = false;
+
 //Renderer initialization
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
@@ -62,7 +67,7 @@ loader.load('/public/models/staff/scene.gltf', (gltf) => {
             staff.receiveShadow = true;
         }
     })
-    scene.add(staff);
+    //scene.add(staff);
 })
 
 loader.load('/public/models/pine/scene.gltf', (gltf) => {
@@ -87,8 +92,30 @@ loader.load('/public/models/fire/scene.gltf', (gltf) => {
     const clip = THREE.AnimationClip.findByName(clips, 'anim_stack');
     const action = mixer.clipAction(clip);
     action.play();
-    scene.add(fire);
+    //scene.add(fire);
 })
+
+// Create a perimeter (invisible walls)
+const wallThickness = 3;
+const wallHeight = 10;
+const perimeterMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, visible: true });
+
+const walls = [
+    new THREE.Mesh(new THREE.BoxGeometry(mapEdgeLength, wallHeight, wallThickness), perimeterMaterial),
+    new THREE.Mesh(new THREE.BoxGeometry(mapEdgeLength, wallHeight, wallThickness), perimeterMaterial),
+    new THREE.Mesh(new THREE.BoxGeometry(wallThickness, wallHeight, mapEdgeLength), perimeterMaterial),
+    new THREE.Mesh(new THREE.BoxGeometry(wallThickness, wallHeight, mapEdgeLength), perimeterMaterial),
+];
+
+walls[0].position.set(0, (wallHeight / 2) - 1.4, -mapEdgeLength / 2); // Top wall
+walls[1].position.set(0, (wallHeight / 2) - 1.4, mapEdgeLength / 2); // Bottom wall
+walls[2].position.set(-mapEdgeLength / 2, (wallHeight / 2) - 1.4, 0); // Left wall
+walls[3].position.set(mapEdgeLength / 2, (wallHeight / 2) - 1.4, 0); // Right wall
+
+walls.forEach(wall => scene.add(wall));
+walls.forEach(wall => wall.geometry.computeBoundingBox());
+
+
 
 const animationsFolder = gui.addFolder('Animations');
 animationsFolder.open();
@@ -102,9 +129,11 @@ const sky = new Sky()
 addSky(sky);
 
 //Light initialization
-const ambientLight = new THREE.AmbientLight( 0x404040 ); // soft white light
+/*const ambientLight = new THREE.AmbientLight( 0x404040 ); // soft white light
 ambientLight.intensity = 5;
 scene.add( ambientLight );
+
+ */
 const pointLight = new THREE.PointLight('#404040', 3000, 100); // White light, full intensity, distance 100
 pointLight.position.set(10, 10, 10); // Set light position
 pointLight.castShadow = true;
@@ -113,7 +142,27 @@ pointLight.shadow.mapSize.width = window.innerWidth;
 pointLight.shadow.camera.near = 0.5;
 pointLight.shadow.camera.far = 1000;
 pointLight.shadow.bias = 0.0003;
-scene.add(pointLight);
+//scene.add(pointLight);
+
+// Add a directional light to simulate sunlight
+const sunlight = new THREE.DirectionalLight(0xffd27f, 1); // White light with full intensity
+sunlight.position.set(50, 100, 50); // Position the light like the sun
+sunlight.castShadow = true;  // Enable shadows from the light
+scene.add(sunlight);
+
+// Optional: Configure the shadow properties for better performance/quality
+sunlight.shadow.mapSize.width = 2048;  // Shadow map resolution
+sunlight.shadow.mapSize.height = 2048;
+sunlight.shadow.camera.near = 0.5;
+sunlight.shadow.camera.far = 500;
+sunlight.shadow.camera.left = -50;
+sunlight.shadow.camera.right = 50;
+sunlight.shadow.camera.top = 50;
+sunlight.shadow.camera.bottom = -50;
+
+// Add a bit of ambient light to simulate global illumination
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);  // Low intensity ambient light
+scene.add(ambientLight);
 
 
 //Fog
@@ -151,7 +200,6 @@ document.addEventListener('keydown', function(event) {
             dampingFactor = 75.0;
             running = false;
         }
-
         //console.log(dampingFactor);
     }
 });
@@ -160,35 +208,39 @@ const onKeyDown = function(event) {
     switch (event.code) {
         case 'ArrowUp':
         case 'KeyW':
-            if (!character.isDead){
+            if (!character.isDead && cameraLocked){
                 moveForward = true;
                 pressed.add(event.code);
                 character.animations.run();
             }
+            cameraW = true;
             break;
         case 'ArrowLeft':
         case 'KeyA':
-            if (!character.isDead){
+            if (!character.isDead && cameraLocked){
                 moveLeft = true;
                 pressed.add(event.code);
                 character.animations.run();
             }
+            cameraA = true;
             break;
         case 'ArrowDown':
         case 'KeyS':
-            if (!character.isDead){
+            if (!character.isDead && cameraLocked){
                 moveBackward = true;
                 pressed.add(event.code);
                 character.animations.run();
             }
+            cameraS = true;
             break;
         case 'ArrowRight':
         case 'KeyD':
-            if (!character.isDead){
+            if (!character.isDead && cameraLocked){
                 moveRight = true;
                 pressed.add(event.code);
                 character.animations.run();
             }
+            cameraD = true;
             break;
 
         case 'Escape':
@@ -205,6 +257,16 @@ const onKeyDown = function(event) {
                 levelManager.restart();
             }
             break;
+
+        case 'KeyL':
+            if (cameraLocked){
+                cameraLocked = false;
+                controls.lock();
+            }else{
+                cameraLocked = true;
+                controls.unlock();
+            }
+
     }
 };
 const onKeyUp = function(event) {
@@ -216,6 +278,7 @@ const onKeyUp = function(event) {
             if(!pressed.size && !character.isDead){
                 character.animations.idle();
             }
+            cameraW = false;
             break;
         case 'ArrowLeft':
         case 'KeyA':
@@ -224,6 +287,7 @@ const onKeyUp = function(event) {
             if(!pressed.size && !character.isDead){
                 character.animations.idle();
             }
+            cameraA = false;
             break;
         case 'ArrowDown':
         case 'KeyS':
@@ -232,6 +296,7 @@ const onKeyUp = function(event) {
             if(!pressed.size && !character.isDead){
                 character.animations.idle();
             }
+            cameraS = false;
             break;
         case 'ArrowRight':
         case 'KeyD':
@@ -240,6 +305,7 @@ const onKeyUp = function(event) {
             if(!pressed.size && !character.isDead){
                 character.animations.idle();
             }
+            cameraD = false;
             break;
     }
 };
@@ -399,15 +465,28 @@ function animate() {
 
     prevTime = time;
 
-    if (!paused){
+    if (!paused || !cameraLocked){
         if (character.modelReady) {
             prevPosition = character.model.position;
             character.mixer.update(clock.getDelta());
             character.hitbox.setFromObject(character.model);
-            camera.lookAt(character.model.position);
+
             character.model.position.x = character.model.position.x + velocity.x *delta;
             character.model.position.z = character.model.position.z + velocity.z *delta;
-            camera.position.set(character.model.position.x, character.model.position.y + cameraDistance , character.model.position.z + cameraDistance);
+            for (const wall of walls) {
+                const wallBox = new THREE.Box3().setFromObject(wall);
+                if (character.hitbox.intersectsBox(wallBox)) {
+                    // Undo movement
+                    character.model.position.x = character.model.position.x - velocity.x *delta;
+                    character.model.position.z = character.model.position.z - velocity.z *delta;
+                }
+            }
+            if (cameraLocked){
+                camera.lookAt(character.model.position);
+                camera.position.set(character.model.position.x, character.model.position.y + cameraDistance , character.model.position.z + cameraDistance);
+            }else{
+                moveCamera();
+            }
 
             //TODO: vedere quaternion
             if (direction.length() > 0){
@@ -425,15 +504,17 @@ function animate() {
                     }
                     enemiesLoaded = true;
                 }else{
-                    enemies.forEach(enemy => {
-                        enemy.moveTowards(character.model, delta, performance.now());
-                        enemy.mixer.update(delta);
-                    })
+                    if (cameraLocked){
+                        enemies.forEach(enemy => {
+                            enemy.moveTowards(character.model, delta, performance.now());
+                            enemy.mixer.update(delta);
+                        })
+                    }
                 }
 
                 levelManager.checkKillCount();
             }
-            projectileManager.updatePositions(delta);
+            if (cameraLocked) projectileManager.updatePositions(delta);
 
             if (assetLoader.boxModelLoaded){
                 boxes.forEach(box => {
@@ -450,3 +531,22 @@ function animate() {
     renderer.render(scene, camera);
 }
 
+function moveCamera() {
+    if (cameraW) {
+        controls.moveForward(unlockedCameraSpeed);
+    }
+    if (cameraS) {
+        controls.moveForward(-unlockedCameraSpeed);
+    }
+    if (cameraA) {
+        controls.moveRight(-unlockedCameraSpeed);
+    }
+    if (cameraD) {
+        controls.moveRight(unlockedCameraSpeed);
+    }
+}
+
+function simulateKeyPress(key) {
+    let event = new KeyboardEvent('keydown', { key: key });
+    document.dispatchEvent(event);
+}

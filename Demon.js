@@ -24,7 +24,7 @@ export class Demon {
         this.model = SkeletonUtils.clone(this.assetLoader.mutantModel);
         if (elite){
             this.model.scale.set(0.02, 0.02, 0.02);
-            this.hp = 1000;
+            this.hp = 500;
             this.attack = 100;
             this.moveSpeed = 5;
         }
@@ -40,7 +40,7 @@ export class Demon {
         }
 
         this.mixer.addEventListener('finished', (event) => {
-            console.log(event);
+            //console.log(event);
             if (event.action === this.actions.die){
                 scene.remove(this.model);
             }
