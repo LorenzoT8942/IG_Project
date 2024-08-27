@@ -91,7 +91,7 @@ loader.load('/public/models/mushroomTree/scene.gltf', (gltf) => {
         }
     })
 
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 35; i++) {
         let x = Math.random() * mapEdgeLength - mapEdgeLength/2;
         let z = Math.random() * mapEdgeLength - mapEdgeLength/2;
         const randomAngle = Math.random() * 2 * Math.PI;
@@ -152,8 +152,8 @@ const characterLight = new PointLight('#e8a84a', 10, 10);
 characterLight.position.setY(1.2);
 scene.add(characterLight);
 //Sky
-const sky = new Sky()
-addSky(sky);
+//const sky = new Sky()
+addSky();
 
 //Light initialization
 /*const ambientLight = new THREE.AmbientLight( 0x404040 ); // soft white light
@@ -196,10 +196,10 @@ scene.add(ambientLight);
 
  */
 
-const ambientLight = new THREE.AmbientLight('#9796f1', 1); // Low intensity, soft bluish color
+const ambientLight = new THREE.AmbientLight('#9796f1', 0.3); // Low intensity, soft bluish color
 scene.add(ambientLight);
 
-const moonLight = new THREE.DirectionalLight('#b5b5f3', 0.5); // Soft bluish light
+const moonLight = new THREE.DirectionalLight('#b5b5f3', 0.3); // Soft bluish light
 moonLight.position.set(50, 100, 50); // Position the light high above the scene
 moonLight.castShadow = true; // Optional, if you want shadows from the moonlight
 moonLight.shadow.mapSize.width = 2048;  // Shadow map resolution
@@ -215,7 +215,7 @@ scene.add(moonLight);
 
 //Fog
 //scene.fog = new THREE.FogExp2('#4a5a49', 0.03);
-scene.fog = new THREE.Fog(0x101020, 1, 100);
+//scene.fog = new THREE.Fog(0x101020, 1, 100);
 //gui.add(scene.fog, 'density', 0, 1, 0.001).name('Fog Density');
 
 
@@ -293,7 +293,7 @@ const onKeyDown = function(event) {
             break;
 
         case 'Escape':
-            if (!character.isDead){
+            if (!character.isDead && levelManager.victoryState === false){
                 paused = paused === false;
                 pauseOverlay.style.visibility = paused ? 'visible' : 'hidden';
             }
@@ -451,15 +451,57 @@ cameraFolder.add(camera.position, 'y', -10, 10).name('Y Position');
 cameraFolder.add(camera.position, 'z', -10, 10).name('Z Position');
 cameraFolder.open();
 
-function addSky(sky) {
-    sky.scale.set(100, 100, 100);
+function addSky() {
+    /*sky.scale.setScalar(450000);
     scene.add(sky);
-//Modifies uniform values of the vertex shader
-    sky.material.uniforms['turbidity'].value = 20;
-    sky.material.uniforms['rayleigh'].value = 0.558;
-    sky.material.uniforms['mieCoefficient'].value = 0.009;
-    sky.material.uniforms['mieDirectionalG'].value = 0.999998;
-    sky.material.uniforms['sunPosition'].value.set(1, 1, 1);
+
+    const skyUniforms = sky.material.uniforms;
+    skyUniforms['turbidity'].value = 0.0;  // Lower turbidity for a clearer, darker sky
+    skyUniforms['rayleigh'].value = 0.0;   // Remove rayleigh scattering for darkness
+    skyUniforms['mieCoefficient'].value = 0.0001;  // Very low mie scattering for reduced haze
+    skyUniforms['mieDirectionalG'].value = 0.2;    // Slight directional scattering for soft light
+
+
+    const sun = new THREE.Vector3();
+    const phi = THREE.MathUtils.degToRad(90);  // Position the sun below the horizon
+    const theta = THREE.MathUtils.degToRad(180);
+
+    sun.setFromSphericalCoords(1, phi, theta);
+    skyUniforms['sunPosition'].value.copy(sun);
+
+     */
+
+    // Create a sphere to represent the night sky
+    const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
+    const skyMaterial = new THREE.MeshBasicMaterial({
+        map: new THREE.TextureLoader().load('https://threejs.org/examples/textures/skybox/night.jpg'),
+        side: THREE.BackSide,
+    });
+    const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+    scene.add(sky);
+
+    // Create stars using a particle system
+    const starGeometry = new THREE.BufferGeometry();
+    const starCount = 1000;
+    const starVertices = [];
+
+    for (let i = 0; i < starCount; i++) {
+        const x = THREE.MathUtils.randFloatSpread(1000);
+        const y = THREE.MathUtils.randFloatSpread(1000);
+        const z = THREE.MathUtils.randFloatSpread(1000);
+
+        starVertices.push(x, y, z);
+    }
+
+    starGeometry.setAttribute(
+        'position',
+        new THREE.Float32BufferAttribute(starVertices, 3)
+    );
+
+    const starMaterial = new THREE.PointsMaterial({ color: 0xffffff });
+    const stars = new THREE.Points(starGeometry, starMaterial);
+    scene.add(stars);
+
 }
 
 //Axes initialization
@@ -519,7 +561,12 @@ function animate() {
             prevPosition = character.model.position;
             character.mixer.update(clock.getDelta());
             character.hitbox.setFromObject(character.model);
-
+            if (cameraLocked){
+                camera.position.set(character.model.position.x, character.model.position.y + cameraDistance , character.model.position.z + cameraDistance);
+                camera.lookAt(character.model.position);
+            }else{
+                moveCamera();
+            }
             character.model.position.x = character.model.position.x + velocity.x *delta;
             character.model.position.z = character.model.position.z + velocity.z *delta;
             characterLight.position.x = character.model.position.x;
@@ -533,12 +580,7 @@ function animate() {
                     character.model.position.z = character.model.position.z - velocity.z *delta;
                 }
             }
-            if (cameraLocked){
-                camera.lookAt(character.model.position);
-                camera.position.set(character.model.position.x, character.model.position.y + cameraDistance , character.model.position.z + cameraDistance);
-            }else{
-                moveCamera();
-            }
+
 
             //TODO: vedere quaternion
             if (direction.length() > 0){

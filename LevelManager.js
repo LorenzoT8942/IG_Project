@@ -15,7 +15,7 @@ export class LevelManager {
         this.boxes = boxes;
         this.defeatOverlay = document.getElementById("defeatOverlay");
         this.victoryOverlay = document.getElementById("victoryOverlay");
-
+        this.victoryState = false;
         this.lastSpawned = -1;
         this.eliteSpawned = false;
 
@@ -76,6 +76,7 @@ export class LevelManager {
 
     showVictoryView () {
         this.victoryOverlay.style.visibility = 'visible';
+        this.victoryState = true;
     }
 
     restart(){
