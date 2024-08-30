@@ -26,6 +26,11 @@ assetLoader.load();
 
 
 const textureLoader = new THREE.TextureLoader();
+const projTexture = textureLoader.load('public/textures/projectile/projTexture2.jpg');
+projTexture.repeat.set(1,1);
+projTexture.wrapS = THREE.RepeatWrapping;
+projTexture.wrapT = THREE.RepeatWrapping;
+projTexture.colorSpace = THREE.SRGBColorSpace;
 const gui = new GUI();
 
 const renderer = new THREE.WebGLRenderer();
@@ -40,7 +45,7 @@ const pointer = new THREE.Vector2();
 let groundMesh;
 let prevPosition = new THREE.Vector3(0,0 ,0);
 let headBone;
-let projectileManager = new ProjectileManager(scene, enemies);
+let projectileManager = new ProjectileManager(scene, enemies, projTexture);
 let paused = false;
 let defeat = false;
 
@@ -243,7 +248,12 @@ function onMouseDown(event){
 
         if (intersects.length > 0){
             //dir = new THREE.Vector2(intersects[0].point.x, intersects[0].point.z);
-            dir = new THREE.Vector2(pointer.x, -pointer.y);
+            console.log("point hit ", intersects[0].point.x, intersects[0].point.z);
+            dir = new THREE.Vector2();
+            dir.subVectors(new THREE.Vector2(intersects[0].point.x, intersects[0].point.z),  new THREE.Vector2(character.model.position.x, character.model.position.z));
+            dir.normalize();
+            console.log(dir);
+            //dir = new THREE.Vector2(pointer.x, -pointer.y);
             //console.log(dir.x, dir.y);
         }
 

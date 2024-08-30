@@ -19,7 +19,7 @@ export class Demon {
         this.attackInterval = 1000;
         this.isSpawned = false;
         this.lastCollision = 0;
-        this.collisionCD = 300;
+        this.collisionCD = 150;
         this.animationActions = [];
         this.scene = scene;
         this.model = SkeletonUtils.clone(this.assetLoader.mutantModel);

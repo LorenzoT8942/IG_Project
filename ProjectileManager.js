@@ -1,12 +1,14 @@
 import * as THREE from "three";
+import {texture} from "three/examples/jsm/nodes/accessors/TextureNode.js";
 
 export class ProjectileManager {
 
-    constructor(scene, enemies) {
+    constructor(scene, enemies, texture) {
         this.scene = scene;
         this.projectiles = [];
         this.projectileSpeed = 50;
         this.enemies = enemies;
+        this.projTexture =  texture;
         //this.geometry = new THREE.SphereGeometry(0.1, 8, 4);
         //this.material = new THREE.MeshBasicMaterial({color: "aqua"});
         //this.sphereMesh = new THREE.Mesh(this.geometry, this.material);
@@ -15,7 +17,11 @@ export class ProjectileManager {
 
     spawnProjectile(direction, spawnPos, dmg) {
         let geometry = new THREE.SphereGeometry(0.1, 8, 4);
-        let material = new THREE.MeshBasicMaterial({color: "aqua"});
+        let material = new THREE.MeshBasicMaterial({
+            //color: "aqua"
+            map: this.projTexture
+
+        });
         let sphereMesh = new THREE.Mesh(geometry, material);
         let pBox = new THREE.Box3().setFromObject(sphereMesh);
         let projectile = {
@@ -55,10 +61,7 @@ export class ProjectileManager {
                     //console.log(`enemy has ${e.hp} HP`);
                     if (p.bounces > 0){
                         const normal = this.computeHitboxNormal(p.mesh, e.model);
-                        console.log("dir ", p.dir);
-                        console.log("normal ", normal);
                         p.dir = this.reflectDirection(p.dir, normal);
-                        console.log("new dir ", p.dir);
                         p.bounces -= 1;
                     }else{
                         this.removeProjectile(p);
@@ -121,7 +124,6 @@ export class ProjectileManager {
 
         const hitboxToProj = new THREE.Vector3();
         hitboxToProj.subVectors(projWP, hitboxWP);
-        console.log(hitboxToProj);
 
         const max = Math.max(Math.abs(hitboxToProj.x), Math.abs(hitboxToProj.z));
 
