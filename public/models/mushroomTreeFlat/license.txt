@@ -1,0 +1,11 @@
+Model Information:
+* title:	Mushroom tree (flat)
+* source:	https://sketchfab.com/3d-models/mushroom-tree-flat-83f6c24d178c41798c09696f31ed3d30
+* author:	NoodlePoodle (https://sketchfab.com/NoodePoodle)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Mushroom tree (flat)" (https://sketchfab.com/3d-models/mushroom-tree-flat-83f6c24d178c41798c09696f31ed3d30) by NoodlePoodle (https://sketchfab.com/NoodePoodle) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

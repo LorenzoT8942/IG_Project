@@ -18,7 +18,8 @@ export class Demon {
         this.assetLoader = assetLoader;
         this.attackInterval = 1000;
         this.isSpawned = false;
-
+        this.lastCollision = 0;
+        this.collisionCD = 300;
         this.animationActions = [];
         this.scene = scene;
         this.model = SkeletonUtils.clone(this.assetLoader.mutantModel);
@@ -29,9 +30,6 @@ export class Demon {
             this.moveSpeed = 5;
         }
         this.mixer = new THREE.AnimationMixer(this.model);
-        //console.log(assetLoader.mutantRunAnim);
-        //console.log(assetLoader.mutantAttackAnim);
-        //console.log(assetLoader.mutantDeathAnim);
         this.actions = {
             //idle: null,
             attack: this.mixer.clipAction(assetLoader.mutantAttackAnim),
@@ -173,5 +171,14 @@ export class Demon {
         this.supportBox.position.y += 1.0;
         //this.supportBox.rotation.copy(this.model.rotation);
         this.hitbox.setFromObject(this.supportBox);
+    }
+
+    isHittable(collisionTime){
+        if (collisionTime - this.lastCollision > this.collisionCD){
+            this.lastCollision = collisionTime;
+            return true;
+        }
+
+        return false;
     }
 }

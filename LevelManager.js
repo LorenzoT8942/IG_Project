@@ -2,7 +2,7 @@ import {Demon} from "./Demon.js";
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils';
 import {UpgradeBox} from "./UpgradeBox.js";
 
-export class LevelManager {
+export class        LevelManager {
 
 
     constructor(scene, enemies, boxes, player, assetLoader, mapEdgeLength) {
@@ -30,15 +30,15 @@ export class LevelManager {
 
             setTimeout(() => {
                 this.spawnEnemies(5);
-            }, 2000)
+            }, 2000);
 
             setTimeout(() => {
                 this.spawnEnemies(5);
-            }, 4000)
+            }, 4000);
 
             setTimeout(() => {
                 this.spawnEnemies(5);
-            }, 8000)
+            }, 8000);
         }
     }
 

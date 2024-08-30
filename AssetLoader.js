@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {Demon} from "./Demon.js";
 
 export class AssetLoader {
-    constructor(gltfLoader, fbxLoader, enemies) {
+    constructor(gltfLoader, fbxLoader, enemies, scene) {
         this.gltfLoader = gltfLoader;
         this.fbxLoader = fbxLoader;
         this.mutantModel = null;
@@ -15,6 +15,7 @@ export class AssetLoader {
         this.boxModelLoaded = false;
 
         this.enemies = enemies;
+        this.scene = scene;
     }
 
     loadMutant(){
@@ -60,6 +61,7 @@ export class AssetLoader {
             this.boxModelLoaded = true;
         })
     }
+
 
     load(){
         this.loadMutant();

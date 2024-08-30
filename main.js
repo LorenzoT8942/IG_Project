@@ -11,7 +11,9 @@ import {AssetLoader} from "./AssetLoader.js";
 import {LevelManager} from "./LevelManager.js";
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils';
 import {DirectionalLight, PointLight} from "three";
+import Stats from 'stats.js'
 
+const scene = new THREE.Scene();
 let hpBar = document.getElementById('hp-bar');
 let pauseOverlay = document.getElementById('pauseOverlay');
 let defeatOverlay = document.getElementById('defeatOverlay');
@@ -19,10 +21,10 @@ let defeatOverlay = document.getElementById('defeatOverlay');
 const loader = new GLTFLoader();
 const fbxLoader  = new FBXLoader();
 let enemies = [];
-const assetLoader = new AssetLoader(loader, fbxLoader, enemies);
+const assetLoader = new AssetLoader(loader, fbxLoader, enemies, scene);
 assetLoader.load();
 
-const scene = new THREE.Scene();
+
 const textureLoader = new THREE.TextureLoader();
 const gui = new GUI();
 
@@ -45,86 +47,19 @@ let defeat = false;
 let spawned = false;
 let started = false;
 let mapEdgeLength = 100;
+
+let cameraDistance = 6;
 let cameraLocked = true;
 const unlockedCameraSpeed = 0.1;
 let cameraW = false;
 let cameraA = false;
 let cameraS = false;
 let cameraD = false;
+let fireflies = [];
 
-//Renderer initialization
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.setAnimationLoop(animate);
-document.body.appendChild(renderer.domElement);
-
-
-loader.load('/public/models/pine/scene.gltf', (gltf) => {
-    let pine = gltf.scene;
-    pine.scale.set(0.003, 0.003, 0.003);
-    pine.position.set(0, -1.5, -10);
-    pine.traverse(function (pine){
-        if (pine.isObject3D){
-            pine.castShadow = true;
-            pine.receiveShadow = true;
-        }
-    })
-
-    for (let i = 0; i < 60; i++) {
-        let x = Math.random() * mapEdgeLength - mapEdgeLength/2;
-        let z = Math.random() * mapEdgeLength - mapEdgeLength/2;
-        let treeClone = SkeletonUtils.clone(pine);
-        treeClone.position.setX(x);
-        treeClone.position.setZ(z);
-        scene.add(treeClone);
-    }
-})
-
-loader.load('/public/models/mushroomTree/scene.gltf', (gltf) => {
-    let mushroomTree = gltf.scene;
-    mushroomTree.scale.set(0.007, 0.007, 0.007);
-    mushroomTree.position.set(0, -1.5, -10);
-    mushroomTree.traverse(function (mushroomTree){
-        if (mushroomTree.isObject3D){
-            mushroomTree.castShadow = true;
-            mushroomTree.receiveShadow = true;
-        }
-    })
-
-    for (let i = 0; i < 35; i++) {
-        let x = Math.random() * mapEdgeLength - mapEdgeLength/2;
-        let z = Math.random() * mapEdgeLength - mapEdgeLength/2;
-        const randomAngle = Math.random() * 2 * Math.PI;
-
-        let mushroomClone = SkeletonUtils.clone(mushroomTree);
-        mushroomClone.position.setX(x);
-        mushroomClone.position.setZ(z);
-        mushroomClone.rotateY(randomAngle);
-        scene.add(mushroomClone);
-
-        let mushLight = new PointLight("#a6dc65", 10, 10);
-        mushLight.position.set(x, 1, z);
-        scene.add(mushLight);
-    }
-})
-
-let fire;
-loader.load('/public/models/fire/scene.gltf', (gltf) => {
-    fire = gltf.scene;
-    const mixer = new THREE.AnimationMixer(fire);
-    fire.position.set(0, -1.7, 0);
-    let clips = gltf.animations;
-    const clip = THREE.AnimationClip.findByName(clips, 'anim_stack');
-    const action = mixer.clipAction(clip);
-    action.play();
-    //scene.add(fire);
-})
-
-// Create a perimeter (invisible walls)
 const wallThickness = 3;
 const wallHeight = 10;
 const perimeterMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, visible: false });
-
 const walls = [
     new THREE.Mesh(new THREE.BoxGeometry(mapEdgeLength, wallHeight, wallThickness), perimeterMaterial),
     new THREE.Mesh(new THREE.BoxGeometry(mapEdgeLength, wallHeight, wallThickness), perimeterMaterial),
@@ -132,13 +67,22 @@ const walls = [
     new THREE.Mesh(new THREE.BoxGeometry(wallThickness, wallHeight, mapEdgeLength), perimeterMaterial),
 ];
 
-walls[0].position.set(0, (wallHeight / 2) - 1.4, -mapEdgeLength / 2); // Top wall
-walls[1].position.set(0, (wallHeight / 2) - 1.4, mapEdgeLength / 2); // Bottom wall
-walls[2].position.set(-mapEdgeLength / 2, (wallHeight / 2) - 1.4, 0); // Left wall
-walls[3].position.set(mapEdgeLength / 2, (wallHeight / 2) - 1.4, 0); // Right wall
+//Renderer initialization
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.setAnimationLoop(animate);
+document.body.appendChild(renderer.domElement);
 
-walls.forEach(wall => scene.add(wall));
-walls.forEach(wall => wall.geometry.computeBoundingBox());
+setLights();
+
+loadTrees();
+
+setPerimeter();
+
+addSky();
+
+//Terrain initialization
+createTerrain();
 
 
 
@@ -151,85 +95,8 @@ let levelManager = new LevelManager(scene, enemies, boxes, character, assetLoade
 const characterLight = new PointLight('#e8a84a', 10, 10);
 characterLight.position.setY(1.2);
 scene.add(characterLight);
-//Sky
-//const sky = new Sky()
-addSky();
-
-//Light initialization
-/*const ambientLight = new THREE.AmbientLight( 0x404040 ); // soft white light
-ambientLight.intensity = 5;
-scene.add( ambientLight );
-
- */
-
-/*
-const pointLight = new THREE.PointLight('#404040', 3000, 100); // White light, full intensity, distance 100
-pointLight.position.set(10, 10, 10); // Set light position
-pointLight.castShadow = true;
-pointLight.shadow.mapSize.height = window.innerHeight;
-pointLight.shadow.mapSize.width = window.innerWidth;
-pointLight.shadow.camera.near = 0.5;
-pointLight.shadow.camera.far = 1000;
-pointLight.shadow.bias = 0.0003;
-//scene.add(pointLight);
-
-// Add a directional light to simulate sunlight
-const sunlight = new THREE.DirectionalLight(0xffd27f, 1); // White light with full intensity
-sunlight.position.set(50, 100, 50); // Position the light like the sun
-sunlight.castShadow = true;  // Enable shadows from the light
-scene.add(sunlight);
-
-// Optional: Configure the shadow properties for better performance/quality
-sunlight.shadow.mapSize.width = 2048;  // Shadow map resolution
-sunlight.shadow.mapSize.height = 2048;
-sunlight.shadow.camera.near = 0.5;
-sunlight.shadow.camera.far = 500;
-sunlight.shadow.camera.left = -50;
-sunlight.shadow.camera.right = 50;
-sunlight.shadow.camera.top = 50;
-sunlight.shadow.camera.bottom = -50;
-
-// Add a bit of ambient light to simulate global illumination
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);  // Low intensity ambient light
-scene.add(ambientLight);
 
 
- */
-
-const ambientLight = new THREE.AmbientLight('#9796f1', 0.3); // Low intensity, soft bluish color
-scene.add(ambientLight);
-
-const moonLight = new THREE.DirectionalLight('#b5b5f3', 0.3); // Soft bluish light
-moonLight.position.set(50, 100, 50); // Position the light high above the scene
-moonLight.castShadow = true; // Optional, if you want shadows from the moonlight
-moonLight.shadow.mapSize.width = 2048;  // Shadow map resolution
-moonLight.shadow.mapSize.height = 2048;
-moonLight.shadow.camera.near = 0.5;
-moonLight.shadow.camera.far = 500;
-moonLight.shadow.camera.left = -50;
-moonLight.shadow.camera.right = 50;
-moonLight.shadow.camera.top = 50;
-moonLight.shadow.camera.bottom = -50;
-scene.add(moonLight);
-
-
-//Fog
-//scene.fog = new THREE.FogExp2('#4a5a49', 0.03);
-//scene.fog = new THREE.Fog(0x101020, 1, 100);
-//gui.add(scene.fog, 'density', 0, 1, 0.001).name('Fog Density');
-
-
-//Cube initialization
-const geometry = new THREE.BoxGeometry(1, 1, 1);
-const material = new THREE.MeshStandardMaterial( {color: 0x00ff00} );
-const cube = new THREE.Mesh(geometry, material);
-cube.position.set(7, 1, 1);
-cube.castShadow = true;
-//scene.add(cube);
-
-
-//Terrain initialization
-createTerrain();
 
 //Init movement
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
@@ -363,7 +230,6 @@ function onWindowResize() {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
-
 function onMouseDown(event){
 
     if (!paused){
@@ -389,67 +255,263 @@ function onMouseDown(event){
         }
     }
 }
+function onWheel(event) {
+    // Update the variable based on the scroll delta
+    cameraDistance = Math.max(cameraDistance + event.deltaY/1000, 2);
+}
 
+window.addEventListener('wheel', onWheel);
 document.addEventListener('keydown', onKeyDown, false);
 document.addEventListener('keyup', onKeyUp, false);
 window.addEventListener('resize', onWindowResize, false);
 document.addEventListener('mousedown', onMouseDown, false);
 
 
-
-function createTerrain() {
-    const width = mapEdgeLength;
-    const height = mapEdgeLength;
-    const geometry = new THREE.PlaneGeometry(width, height, 100, 100);
-    geometry.rotateX(-Math.PI / 2);
-
-    const repeatFactor = width/5;
-    const groundTexture = textureLoader.load('public/textures/forestGround/forrest_ground_01_diff_1k.png');
-    const groundDisplacementTexture = textureLoader.load('public/textures/forestGround/forrest_ground_01_disp_1k.png');
-    const groundNormalTexture = textureLoader.load('public/textures/forestGround/forrest_ground_01_nor_gl_1k.png');
-    const groundARMTexture = textureLoader.load('public/textures/forestGround/forrest_ground_01_arm_1k.png');
-    groundTexture.repeat.set(repeatFactor, repeatFactor);
-    groundTexture.wrapS = THREE.RepeatWrapping;
-    groundTexture.wrapT = THREE.RepeatWrapping;
-    groundTexture.colorSpace = THREE.SRGBColorSpace;
-    groundDisplacementTexture.repeat.set(repeatFactor, repeatFactor);
-    groundDisplacementTexture.wrapS = THREE.RepeatWrapping;
-    groundDisplacementTexture.wrapT = THREE.RepeatWrapping;
-
-    groundNormalTexture.repeat.set(repeatFactor, repeatFactor);
-    groundNormalTexture.wrapS = THREE.RepeatWrapping;
-    groundNormalTexture.wrapT = THREE.RepeatWrapping;
-
-    groundARMTexture.repeat.set(repeatFactor, repeatFactor);
-    groundARMTexture.wrapS = THREE.RepeatWrapping;
-    groundARMTexture.wrapT = THREE.RepeatWrapping;
-
-    let material = new THREE.MeshStandardMaterial({
-        map: groundTexture,
-        displacementMap: groundDisplacementTexture,
-        displacementScale: 0.3,
-        displacementBias: -1.56,
-        aoMap: groundARMTexture,
-        roughnessMap: groundARMTexture,
-        metalnessMap: groundARMTexture,
-        normalMap: groundNormalTexture
-    });
-    const ground = new THREE.Mesh(geometry, material);
-    groundMesh = ground;
-    ground.receiveShadow = true;
-
-    scene.add(ground);
-
-    gui.add(ground.material, 'displacementScale', 0, 1, 0.001);
-    gui.add(ground.material, 'displacementBias', -2, 1, 0.001);
-
-}
-
 const cameraFolder = gui.addFolder('Camera Position');
+//cameraFolder.add(cameraDistance, null,  0, 20).name('cameraDistance');
 cameraFolder.add(camera.position, 'x', -10, 10).name('X Position');
 cameraFolder.add(camera.position, 'y', -10, 10).name('Y Position');
 cameraFolder.add(camera.position, 'z', -10, 10).name('Z Position');
 cameraFolder.open();
+
+const direction = new THREE.Vector3( 0, 0, 0);
+const rotationMatrix = new THREE.Matrix4();
+
+let enemiesLoaded = false;
+
+const stats = new Stats();
+stats.showPanel(0); // 0: fps, 1: ms/frame, 2: memory
+document.body.appendChild(stats.dom);
+
+function animate() {
+
+    stats.begin();
+
+    const time = performance.now();
+    const delta = (time - prevTime) / 1000;
+    prevTime = time;
+    const clockDelta = clock.getDelta()/200;
+
+
+    velocity.x = 0;
+    velocity.z = 0;
+
+    //Velocity multiplied by the time passed between one frame and the next
+    if (moveForward) {
+        if (!character.isDead){
+            velocity.z -= 800.0;
+            direction.z -= 1;
+        }
+    }
+    if (moveBackward){
+        if (!character.isDead) {
+            velocity.z += 800.0;
+            direction.z += 1;
+        }
+    }
+    if (moveLeft){
+        if (!character.isDead) {
+            velocity.x -= 800.0;
+            direction.x -= 1;
+        }
+    }
+    if (moveRight){
+        if (!character.isDead) {
+            velocity.x += 800.0;
+            direction.x += 1;
+        }
+    }
+
+    if (character.isDead){
+        velocity.x = 0;
+        velocity.z = 0;
+    }
+
+
+
+    if (!paused || !cameraLocked){
+        if (character.modelReady) {
+            prevPosition = character.model.position;
+            character.mixer.update(delta);
+            character.hitbox.setFromObject(character.model);
+            if (cameraLocked){
+                camera.position.set(character.model.position.x, character.model.position.y + cameraDistance , character.model.position.z + cameraDistance);
+                camera.lookAt(character.model.position);
+            }else{
+                moveCamera();
+            }
+            character.model.position.x = character.model.position.x + velocity.x *clockDelta;
+            character.model.position.z = character.model.position.z + velocity.z *clockDelta;
+            characterLight.position.x = character.model.position.x;
+            characterLight.position.z = character.model.position.z;
+
+            for (const wall of walls) {
+                const wallBox = new THREE.Box3().setFromObject(wall);
+                if (character.hitbox.intersectsBox(wallBox)) {
+                    // Undo movement
+                    character.model.position.x = character.model.position.x - velocity.x *clockDelta;
+                    character.model.position.z = character.model.position.z - velocity.z *clockDelta;
+                }
+            }
+
+
+            //TODO: vedere quaternion
+            if (direction.length() > 0){
+                direction.normalize();
+                const targetQuaternion = new THREE.Quaternion();
+                rotationMatrix.lookAt(direction, new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0));
+                targetQuaternion.setFromRotationMatrix(rotationMatrix);
+                character.model.quaternion.rotateTowards(targetQuaternion, delta * 10);
+            }
+
+            if (assetLoader.mutantLoaded){
+                if (!enemiesLoaded){
+                    for (let i = 0; i < 50; i++) {
+                        enemies.push(new Demon(scene, assetLoader, character, false));
+                    }
+                    enemiesLoaded = true;
+                }else{
+                    if (cameraLocked){
+                        enemies.forEach(enemy => {
+                            enemy.moveTowards(character.model, delta, performance.now());
+                            enemy.mixer.update(delta);
+                        })
+                    }
+                }
+
+                levelManager.checkKillCount();
+            }
+            if (cameraLocked) projectileManager.updatePositions(delta, time);
+
+            if (assetLoader.boxModelLoaded){
+                boxes.forEach(box => {
+                    box.checkHit();
+                    box.animate();
+                })
+            }
+        }
+
+        fireflies.forEach( ff => {
+            ff.update();
+        })
+    }
+
+    if (character.isDead){
+        levelManager.showDeadView();
+    }
+    renderer.render(scene, camera);
+    stats.end();
+}
+
+function moveCamera() {
+    if (cameraW) {
+        controls.moveForward(unlockedCameraSpeed);
+    }
+    if (cameraS) {
+        controls.moveForward(-unlockedCameraSpeed);
+    }
+    if (cameraA) {
+        controls.moveRight(-unlockedCameraSpeed);
+    }
+    if (cameraD) {
+        controls.moveRight(unlockedCameraSpeed);
+    }
+}
+
+function setPerimeter(){
+
+// Create a perimeter (invisible walls)
+    walls[0].position.set(0, (wallHeight / 2) - 1.4, -mapEdgeLength / 2); // Top wall
+    walls[1].position.set(0, (wallHeight / 2) - 1.4, mapEdgeLength / 2); // Bottom wall
+    walls[2].position.set(-mapEdgeLength / 2, (wallHeight / 2) - 1.4, 0); // Left wall
+    walls[3].position.set(mapEdgeLength / 2, (wallHeight / 2) - 1.4, 0); // Right wall
+
+    walls.forEach(wall => scene.add(wall));
+    walls.forEach(wall => wall.geometry.computeBoundingBox());
+}
+
+function loadTrees(){
+    loader.load('/public/models/pine/scene.gltf', (gltf) => {
+        let pine = gltf.scene;
+        pine.scale.set(0.003, 0.003, 0.003);
+        pine.position.set(0, -1.5, -10);
+        pine.traverse(function (pine){
+            if (pine.isObject3D){
+                pine.castShadow = true;
+                pine.receiveShadow = true;
+            }
+        })
+
+        for (let i = 0; i < 60; i++) {
+            let x = Math.random() * mapEdgeLength - mapEdgeLength/2;
+            let z = Math.random() * mapEdgeLength - mapEdgeLength/2;
+            let treeClone = SkeletonUtils.clone(pine);
+            treeClone.position.setX(x);
+            treeClone.position.setZ(z);
+            scene.add(treeClone);
+        }
+    })
+
+    loader.load('/public/models/mushroomTree/scene.gltf', (gltf) => {
+        let mushroomTree = gltf.scene;
+        mushroomTree.scale.set(0.007, 0.007, 0.007);
+        mushroomTree.position.set(0, -1.5, -10);
+        mushroomTree.traverse(function (mushroomTree){
+            if (mushroomTree.isObject3D){
+                mushroomTree.castShadow = true;
+                mushroomTree.receiveShadow = true;
+            }
+        })
+
+        for (let i = 0; i < 20; i++) {
+            let x = Math.random() * mapEdgeLength - mapEdgeLength/2;
+            let z = Math.random() * mapEdgeLength - mapEdgeLength/2;
+            const randomAngle = Math.random() * 2 * Math.PI;
+
+            let mushroomClone = SkeletonUtils.clone(mushroomTree);
+            mushroomClone.position.setX(x);
+            mushroomClone.position.setZ(z);
+            mushroomClone.rotateY(randomAngle);
+            scene.add(mushroomClone);
+
+            let mushLight = new PointLight("#a6dc65", 10, 10);
+            mushLight.position.set(x, 1, z);
+            scene.add(mushLight);
+        }
+    })
+
+    loader.load('/public/models/mushroomTreeFlat/scene.gltf', (gltf) => {
+        let mushroomTree = gltf.scene;
+        mushroomTree.scale.set(0.007, 0.007, 0.007);
+        mushroomTree.position.set(0, -1.5, -10);
+        mushroomTree.traverse(function (mushroomTree){
+            if (mushroomTree.isObject3D){
+                mushroomTree.castShadow = true;
+                mushroomTree.receiveShadow = true;
+            }
+        })
+
+        for (let i = 0; i < 20; i++) {
+            let x = Math.random() * mapEdgeLength - mapEdgeLength/2;
+            let z = Math.random() * mapEdgeLength - mapEdgeLength/2;
+            const randomAngle = Math.random() * 2 * Math.PI;
+
+            let mushroomClone = SkeletonUtils.clone(mushroomTree);
+            mushroomClone.position.setX(x);
+            mushroomClone.position.setZ(z);
+            mushroomClone.rotateY(randomAngle);
+
+            for (let i = 0; i < 4; i++) {
+                let pLight = getPointLight('#e8ac44');
+                pLight.obj.position.copy(mushroomClone.position);
+                pLight.obj.position.y = 0.2;
+                fireflies.push(pLight);
+                scene.add(pLight.obj);
+            }
+            scene.add(mushroomClone);
+        }
+    })
+}
 
 function addSky() {
     /*sky.scale.setScalar(450000);
@@ -504,143 +566,119 @@ function addSky() {
 
 }
 
-//Axes initialization
-const axesHelper = new THREE.AxesHelper( 2 );
-axesHelper.setColors(new THREE.Color( 1, 0, 0 ), new THREE.Color( 0, 1, 0 ), new THREE.Color( 0, 0, 1 ))
-//scene.add(axesHelper);
+function createTerrain() {
+    const width = mapEdgeLength + 100;
+    const height = mapEdgeLength + 100;
+    const geometry = new THREE.PlaneGeometry(width, height, 100, 100);
+    geometry.rotateX(-Math.PI / 2);
 
-const cameraDistance = 6;
-const direction = new THREE.Vector3( 0, 0, 0);
-const rotationMatrix = new THREE.Matrix4();
+    const repeatFactor = width/5;
+    const groundTexture = textureLoader.load('public/textures/forestGround/forrest_ground_01_diff_1k.png');
+    const groundDisplacementTexture = textureLoader.load('public/textures/forestGround/forrest_ground_01_disp_1k.png');
+    const groundNormalTexture = textureLoader.load('public/textures/forestGround/forrest_ground_01_nor_gl_1k.png');
+    const groundARMTexture = textureLoader.load('public/textures/forestGround/forrest_ground_01_arm_1k.png');
+    groundTexture.repeat.set(repeatFactor, repeatFactor);
+    groundTexture.wrapS = THREE.RepeatWrapping;
+    groundTexture.wrapT = THREE.RepeatWrapping;
+    groundTexture.colorSpace = THREE.SRGBColorSpace;
+    groundDisplacementTexture.repeat.set(repeatFactor, repeatFactor);
+    groundDisplacementTexture.wrapS = THREE.RepeatWrapping;
+    groundDisplacementTexture.wrapT = THREE.RepeatWrapping;
 
-let enemiesLoaded = false;
+    groundNormalTexture.repeat.set(repeatFactor, repeatFactor);
+    groundNormalTexture.wrapS = THREE.RepeatWrapping;
+    groundNormalTexture.wrapT = THREE.RepeatWrapping;
 
-function animate() {
+    groundARMTexture.repeat.set(repeatFactor, repeatFactor);
+    groundARMTexture.wrapS = THREE.RepeatWrapping;
+    groundARMTexture.wrapT = THREE.RepeatWrapping;
 
-    const time = performance.now();
-    const delta = (time - prevTime) / 1000;
+    let material = new THREE.MeshStandardMaterial({
+        map: groundTexture,
+        displacementMap: groundDisplacementTexture,
+        displacementScale: 0.3,
+        displacementBias: -1.56,
+        aoMap: groundARMTexture,
+        roughnessMap: groundARMTexture,
+        metalnessMap: groundARMTexture,
+        normalMap: groundNormalTexture
+    });
+    const ground = new THREE.Mesh(geometry, material);
+    groundMesh = ground;
+    ground.receiveShadow = true;
 
-    velocity.x -= velocity.x * dampingFactor * delta;
-    velocity.z -= velocity.z * dampingFactor * delta;
+    scene.add(ground);
 
-    //Velocity multiplied by the time passed between one frame and the next
-    if (moveForward) {
-        if (!character.isDead){
-            velocity.z -= 400.0 * delta;
-            direction.z -= 1;
-        }
-    }
-    if (moveBackward){
-        if (!character.isDead) {
-            velocity.z += 400.0 * delta;
-            direction.z += 1;
-        }
-    }
-    if (moveLeft){
-        if (!character.isDead) {
-            velocity.x -= 400.0 * delta;
-            direction.x -= 1;
-        }
-    }
-    if (moveRight){
-        if (!character.isDead) {
-            velocity.x += 400.0 * delta;
-            direction.x += 1;
-        }
-    }
+    gui.add(ground.material, 'displacementScale', 0, 1, 0.001);
+    gui.add(ground.material, 'displacementBias', -2, 1, 0.001);
 
-    if (character.isDead){
-        velocity.x = 0;
-        velocity.z = 0;
-    }
-
-    prevTime = time;
-
-    if (!paused || !cameraLocked){
-        if (character.modelReady) {
-            prevPosition = character.model.position;
-            character.mixer.update(clock.getDelta());
-            character.hitbox.setFromObject(character.model);
-            if (cameraLocked){
-                camera.position.set(character.model.position.x, character.model.position.y + cameraDistance , character.model.position.z + cameraDistance);
-                camera.lookAt(character.model.position);
-            }else{
-                moveCamera();
-            }
-            character.model.position.x = character.model.position.x + velocity.x *delta;
-            character.model.position.z = character.model.position.z + velocity.z *delta;
-            characterLight.position.x = character.model.position.x;
-            characterLight.position.z = character.model.position.z;
-
-            for (const wall of walls) {
-                const wallBox = new THREE.Box3().setFromObject(wall);
-                if (character.hitbox.intersectsBox(wallBox)) {
-                    // Undo movement
-                    character.model.position.x = character.model.position.x - velocity.x *delta;
-                    character.model.position.z = character.model.position.z - velocity.z *delta;
-                }
-            }
-
-
-            //TODO: vedere quaternion
-            if (direction.length() > 0){
-                direction.normalize();
-                const targetQuaternion = new THREE.Quaternion();
-                rotationMatrix.lookAt(direction, new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0));
-                targetQuaternion.setFromRotationMatrix(rotationMatrix);
-                character.model.quaternion.rotateTowards(targetQuaternion, delta * 10);
-            }
-
-            if (assetLoader.mutantLoaded){
-                if (!enemiesLoaded){
-                    for (let i = 0; i < 50; i++) {
-                        enemies.push(new Demon(scene, assetLoader, character, false));
-                    }
-                    enemiesLoaded = true;
-                }else{
-                    if (cameraLocked){
-                        enemies.forEach(enemy => {
-                            enemy.moveTowards(character.model, delta, performance.now());
-                            enemy.mixer.update(delta);
-                        })
-                    }
-                }
-
-                levelManager.checkKillCount();
-            }
-            if (cameraLocked) projectileManager.updatePositions(delta);
-
-            if (assetLoader.boxModelLoaded){
-                boxes.forEach(box => {
-                    box.checkHit();
-                    box.animate();
-                })
-            }
-        }
-    }
-
-    if (character.isDead){
-        levelManager.showDeadView();
-    }
-    renderer.render(scene, camera);
 }
 
-function moveCamera() {
-    if (cameraW) {
-        controls.moveForward(unlockedCameraSpeed);
+function getPointLight (color) {
+
+    const light = new THREE.PointLight( color, 1, 2.0);
+
+    // light ball
+    const geo = new THREE.IcosahedronGeometry(0.01, 0);
+    const mat = new THREE.MeshBasicMaterial({color});
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.add(light);
+
+    const circle = new THREE.Object3D();
+    circle.position.y = 1;
+    const radius = 1.25;
+    mesh.position.x = radius;
+    circle.rotation.x = THREE.MathUtils.degToRad(90);
+    circle.rotation.y = Math.random() * Math.PI * 2;
+    circle.add(mesh);
+
+    const glowMat = new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.15
+    });
+
+    const glowMesh = new THREE.Mesh(geo, glowMat);
+    glowMesh.scale.multiplyScalar(1.5);
+    const glowMesh2 = new THREE.Mesh(geo, glowMat);
+    glowMesh2.scale.multiplyScalar(2.5);
+    const glowMesh3 = new THREE.Mesh(geo, glowMat);
+    glowMesh3.scale.multiplyScalar(4);
+    const glowMesh4 = new THREE.Mesh(geo, glowMat);
+    glowMesh4.scale.multiplyScalar(6);
+
+    mesh.add(glowMesh);
+    mesh.add(glowMesh2);
+    mesh.add(glowMesh3);
+    //mesh.add(glowMesh4);
+
+    const rate = Math.random() * 0.01 + 0.005;
+    function update () {
+        circle.rotation.z += rate;
     }
-    if (cameraS) {
-        controls.moveForward(-unlockedCameraSpeed);
-    }
-    if (cameraA) {
-        controls.moveRight(-unlockedCameraSpeed);
-    }
-    if (cameraD) {
-        controls.moveRight(unlockedCameraSpeed);
-    }
+
+    return {
+        obj: circle,
+        update,
+    };
 }
 
-function simulateKeyPress(key) {
-    let event = new KeyboardEvent('keydown', { key: key });
-    document.dispatchEvent(event);
+function setLights(){
+
+    const ambientLight = new THREE.AmbientLight('#9796f1', 0.3); // Low intensity, soft bluish color
+    scene.add(ambientLight);
+
+    const moonLight = new THREE.DirectionalLight('#b5b5f3', 0.3); // Soft bluish light
+    moonLight.position.set(50, 100, 50); // Position the light high above the scene
+    moonLight.castShadow = true; // Optional, if you want shadows from the moonlight
+    moonLight.shadow.mapSize.width = 2048;  // Shadow map resolution
+    moonLight.shadow.mapSize.height = 2048;
+    moonLight.shadow.camera.near = 0.5;
+    moonLight.shadow.camera.far = 500;
+    moonLight.shadow.camera.left = -50;
+    moonLight.shadow.camera.right = 50;
+    moonLight.shadow.camera.top = 50;
+    moonLight.shadow.camera.bottom = -50;
+    scene.add(moonLight);
+
 }
